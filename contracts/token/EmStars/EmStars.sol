@@ -7,6 +7,7 @@ import {IEmAuth} from "../../core/auth/interfaces/IEmAuth.sol";
 import {DoubleEndedUintQueue} from "../../utils/DoubleEndedUintQueue.sol";
 import {IEmStars} from "./interfaces/IEmStars.sol";
 import {IEmReferralPercents, ReferralPercents} from "../../core/referral/interfaces/IEmReferralPercents.sol";
+import {IIncomeDistributor} from "../../core/income/interfaces/IIncomeDistributor.sol";
 
 contract EmStars is ERC20, AccessControl, IEmStars {
 
@@ -15,6 +16,7 @@ contract EmStars is ERC20, AccessControl, IEmStars {
 
     IEmAuth private _auth;
     IEmReferralPercents private _ref;
+    IIncomeDistributor private _income;
 
     mapping (address holder => DoubleEndedUintQueue.UintQueue date) private _lockDate;
     mapping (address holder => mapping (uint256 date => uint256 value)) private _lockValue;
