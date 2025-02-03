@@ -24,9 +24,18 @@ contract EmStars is ERC20, AccessControl, IEmStars {
     DoubleEndedUintQueue.UintQueue private _commonLockDate;
     mapping (uint256 date => uint256 value) private _commonLockValue;
 
+    uint256 private _lockTime = 21 days;
+
     constructor() ERC20("EmStars", "EMSTR") {
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _grantRole(MINTER_ROLE, _msgSender());
+    }
+
+    function _mergeOrderedQueues(
+        DoubleEndedUintQueue.UintQueue memory a,
+        DoubleEndedUintQueue.UintQueue memory b
+    ) internal view returns (DoubleEndedUintQueue.UintQueue memory c) {
+        
     }
 
 }
