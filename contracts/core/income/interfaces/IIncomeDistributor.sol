@@ -17,7 +17,7 @@ interface IIncomeDistributor {
     event DefaultDestinationUpdated(address indexed destination);
 
     function getDestinations() external view returns(IncomeDestination[] memory);
-    function spread(address sender) external payable;
-    function spreadFrom(address sender, uint256 amount) external;
+    function distribute(address sender) external payable;
+    function distributeFrom(address sender, uint256 amount) external;
 
 }

@@ -12,7 +12,7 @@ library OrderedArrays {
         uint256 bi;
 
         while (ai < a.length || bi < b.length) {
-            if (bi >= b.length || a[ai] < b[bi] ) {
+            if (bi >= b.length || (ai < a.length && a[ai] < b[bi])) {
                 q.push(a[ai++]);
             } else if (ai >= a.length || a[ai] > b[bi]) {
                 q.push(b[bi++]);
@@ -34,7 +34,7 @@ library OrderedArrays {
         uint256 bi;
 
         while (ai < a.length || bi < b.length) {
-            if (bi >= b.length || a[ai] > b[bi] ) {
+            if (bi >= b.length || (ai < a.length && a[ai] > b[bi])) {
                 q.push(a[ai++]);
             } else if (ai >= a.length || a[ai] < b[bi]) {
                 q.push(b[bi++]);

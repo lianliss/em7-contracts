@@ -83,10 +83,12 @@ library MemoryQueue {
     }
 
     function first(Queue memory q) internal pure returns (uint256 value) {
+        if (length(q) == 0) Panic.panic(Panic.ARRAY_OUT_OF_BOUNDS);
         return at(q, 0);
     }
 
     function last(Queue memory q) internal pure returns (uint256 value) {
+        if (length(q) == 0) Panic.panic(Panic.ARRAY_OUT_OF_BOUNDS);
         return at(q, length(q) - 1);
     }
 

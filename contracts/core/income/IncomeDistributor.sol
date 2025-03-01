@@ -21,6 +21,7 @@ contract IncomeDistributor is AccessControl, IERC20Errors, IIncomeDistributor {
 
     constructor(address erc20Address) {
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        _grantRole(SPENDER_ROLE, erc20Address);
 
         _erc20 = IERC20(erc20Address);
         _defaultDestination = _msgSender();
@@ -28,7 +29,7 @@ contract IncomeDistributor is AccessControl, IERC20Errors, IIncomeDistributor {
     }
 
     receive() external payable {
-        _spread(_msgSender(), msg.value);
+        _distribute(_msgSender(), msg.value);
     }
 
     /// Public getters
@@ -52,22 +53,22 @@ contract IncomeDistributor is AccessControl, IERC20Errors, IIncomeDistributor {
 
     /// Public setters
 
-    /// @notice Spread coin income
+    /// @notice Distributes coin income
     /// @param sender Income origin
-    function spread(address sender) external payable {
-        _spread(sender, msg.value);
+    function distribute(address sender) external payable {
+        _distribute(sender, msg.value);
     }
 
-    /// @notice Spread ERC20 income
+    /// @notice Distributes ERC20 income
     /// @param sender Income origin
     /// @param amount Amount of ERC20 token
     /// @dev Require SPENDER_ROLE
-    function spreadFrom(address sender, uint256 amount) external onlyRole(SPENDER_ROLE) {
+    function distributeFrom(address sender, uint256 amount) external onlyRole(SPENDER_ROLE) {
         uint256 allowance = _erc20.allowance(sender, address(this));
         if (amount < allowance) {
             revert ERC20InsufficientAllowance(address(this), allowance, amount);
         }
-        _spread(sender, amount);
+        _distribute(sender, amount);
     }
 
     /// Admin methods
@@ -137,8 +138,8 @@ contract IncomeDistributor is AccessControl, IERC20Errors, IIncomeDistributor {
         }
     }
 
-    /// @notice Spreads income to all destinations based on it's shares
-    function _spread(address sender, uint256 amount) internal {
+    /// @notice Distributes income to all destinations based on it's shares
+    function _distribute(address sender, uint256 amount) internal {
         uint256 value = address(_erc20) == address(0)
             ? msg.value
             : amount;
