@@ -133,3 +133,6 @@ dist
 .DS_Store
 .deps
 .states
+.idea
+artifacts
+cache

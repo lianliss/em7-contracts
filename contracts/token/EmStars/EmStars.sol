@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import "hardhat/console.sol";
+
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IEmAuth} from "../../core/auth/interfaces/IEmAuth.sol";
@@ -25,11 +27,6 @@ contract EmStars is ERC20, AccessControl, IEmStars {
     IEmReferralPercents private _ref;
     /// Income distribution
     IIncomeDistributor private _income;
-
-    /// Standart ERC20 variables for overriding
-    mapping(address account => uint256) private _balances;
-    mapping(address account => mapping(address spender => uint256)) private _allowances;
-    uint256 private _totalSupply;
 
     /// Holder's lockups and it's dates
     mapping (address holder => StorageQueue.Queue date) private _lockupDate;
@@ -90,8 +87,7 @@ contract EmStars is ERC20, AccessControl, IEmStars {
             }
         }
         if (unlocks > 0) {
-            _totalSupply += unlocks;
-            emit CommonLockupsUnlocked(unlocks, _totalSupply);
+            emit CommonLockupsUnlocked(unlocks, totalSupply());
         }
     }
 
@@ -112,8 +108,8 @@ contract EmStars is ERC20, AccessControl, IEmStars {
             }
         }
         if (unlocks > 0) {
-            _balances[holder] += unlocks;
-            emit LockupsUnlocked(holder, unlocks, _balances[holder]);
+            _mint(holder, unlocks);
+            emit LockupsUnlocked(holder, unlocks, balanceOf(holder));
         }
     }
 
@@ -122,10 +118,11 @@ contract EmStars is ERC20, AccessControl, IEmStars {
     function _unlockIncome() internal {
         address incomeAddress = address(_income);
         _unlock(incomeAddress);
-        if (_balances[incomeAddress] > 0) {
+        uint256 balance = super.balanceOf(incomeAddress);
+        if (balance > 0) {
             /// Allow to spend
-            _allowances[incomeAddress][incomeAddress] = _balances[incomeAddress];
-            _income.distributeFrom(incomeAddress, _balances[incomeAddress]);
+            _approve(incomeAddress, incomeAddress, balance);
+            _income.distributeFrom(incomeAddress, balance);
         }
     }
 
@@ -160,12 +157,16 @@ contract EmStars is ERC20, AccessControl, IEmStars {
     /// @param holder Lockups owner
     /// @return amount Lockups sum
     function _getLockupsBalance(address holder) internal view returns (uint256 amount) {
-        for (uint256 i; i < _lockupDate[holder].length(); i++) {
+        if (_lockupDate[holder].length() == 0) {
+            return 0;
+        }
+        for (uint256 i = _lockupDate[holder].length() - 1; i >= 0; i--) {
             uint256 date = _lockupDate[holder].at(i);
             if (date < block.timestamp) {
                 break;
             }
             amount += _lockupValue[holder][date];
+            if (i == 0) break;
         }
     }
 
@@ -176,7 +177,7 @@ contract EmStars is ERC20, AccessControl, IEmStars {
         if (_lockupDate[holder].length() == 0) {
             return 0;
         }
-        for (uint256 i = _lockupDate[holder].length() - 1; i > 0; i--) {
+        for (uint256 i; i < _lockupDate[holder].length(); i++) {
             uint256 date = _lockupDate[holder].at(i);
             if (date >= block.timestamp) {
                 break;
@@ -314,9 +315,6 @@ contract EmStars is ERC20, AccessControl, IEmStars {
         address incomeAddress = address(_income);
         _transfer(holder, incomeAddress, amountLeft);
         emit IncomeSent(holder, amountLeft);
-        /// Distribute income to receivers
-        _allowances[incomeAddress][incomeAddress] = _balances[incomeAddress];
-        _income.distributeFrom(incomeAddress, _balances[incomeAddress]);
     }
 
     /// @notice Spend token amount by holder.
@@ -347,7 +345,7 @@ contract EmStars is ERC20, AccessControl, IEmStars {
     /// @dev Require SPENDER_ROLE
     function spend(address holder, uint256 amount) public onlyRole(SPENDER_ROLE) {
         require(!_auth.isBlocked(holder), "Account blocked");
-        uint256 balance = _getLockupsBalance(holder) + _balances[holder];
+        uint256 balance = balanceOf(holder);
         if (balance < amount) {
             revert ERC20InsufficientBalance(holder, balance, amount);
         }
@@ -366,6 +364,14 @@ contract EmStars is ERC20, AccessControl, IEmStars {
         _mintLockup(holder, amount, lockupTime);
     }
 
+    /// @notice Mint funds;
+    /// @param holder Holder address;
+    /// @param amount Token amount to mint;
+    /// @dev Require MINTER_ROLE
+    function mint(address holder, uint256 amount) public onlyRole(MINTER_ROLE) {
+        _mint(holder, amount);
+    }
+
     /// @notice Refund minted locked funds;
     /// @param holder Holder address;
     /// @param amount Token amount to refund;
@@ -382,10 +388,10 @@ contract EmStars is ERC20, AccessControl, IEmStars {
             /// If be able to refund a full amount from the one date
             _lockupValue[holder][date] -= amount;
             emit Refunded(holder, amount, amount, false);
-        } else if (lockupsBalance + _balances[holder] >= amount) {
+        } else if (lockupsBalance + super.balanceOf(holder) >= amount) {
             /// If be able to refund a full amount
             (,,uint256 amountLeft) = _spendLockups(holder, amount);
-            _balances[holder] -= amountLeft;
+            _burn(holder, amountLeft);
             /// Block user
             if (holder != address(_income)) {
                 _auth.blockAccount(holder);
@@ -393,9 +399,9 @@ contract EmStars is ERC20, AccessControl, IEmStars {
             emit Refunded(holder, amount, amount, true);
         } else if (holder != address(_income)) {
             /// Partial refund
-            uint256 refunded = lockupsBalance + _balances[holder];
+            uint256 refunded = lockupsBalance + super.balanceOf(holder);
             _spendLockups(holder, lockupsBalance);
-            _balances[holder] = 0;
+            _burn(holder, super.balanceOf(holder));
             /// Block user
             _auth.blockAccount(holder);
             emit Refunded(holder, amount, refunded, true);
@@ -406,7 +412,7 @@ contract EmStars is ERC20, AccessControl, IEmStars {
     /// @param holder Holder address;
     /// @return Available balance
     function balanceOf(address holder) public view override returns (uint256) {
-        return _balances[holder] + _getUnlockedLockupsBalance(holder);
+        return super.balanceOf(holder) + _getUnlockedLockupsBalance(holder);
     }
 
     /// @notice Returns holder locked balance available for payments only;
@@ -422,12 +428,13 @@ contract EmStars is ERC20, AccessControl, IEmStars {
     function getLockups(address holder) public view returns (Lockup[] memory) {
         uint256 length = _lockupDate[holder].length();
         Lockup[] memory lockups = new Lockup[](length);
-        for (uint256 i; i < length; i++) {
+        for (uint256 i = _lockupDate[holder].length() - 1; i >= 0; i--) {
             lockups[i].untilTimestamp = _lockupDate[holder].at(i);
             if (lockups[i].untilTimestamp < block.timestamp) {
                 break;
             }
             lockups[i].amount = _lockupValue[holder][lockups[i].untilTimestamp];
+            if (i == 0) break;
         }
         return lockups;
     }
@@ -497,17 +504,17 @@ contract EmStars is ERC20, AccessControl, IEmStars {
 
     /// Debug
 
-    function DEVgetLockupDates(address holder) public view returns (uint256[] memory) {
-        return _lockupDate[holder].values();
-    }
+    // function DEVgetLockupDates(address holder) public view returns (uint256[] memory) {
+    //     return _lockupDate[holder].values();
+    // }
 
-    function DEVgetLockupValue(address holder, uint256 date) public view returns (uint256) {
-        return _lockupValue[holder][date];
-    }
+    // function DEVgetLockupValue(address holder, uint256 date) public view returns (uint256) {
+    //     return _lockupValue[holder][date];
+    // }
 
-    function DEVpush(address holder, uint256 date) public {
-        _lockupDate[holder].push(date);
-    }
+    // function DEVpush(address holder, uint256 date) public {
+    //     _lockupDate[holder].push(date);
+    // }
 
 }
 

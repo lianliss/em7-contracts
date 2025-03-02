@@ -1,0 +1,34 @@
+{
+  "name": "@lianliss/em7-contracts",
+  "description": "EmSeven smart contracts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lianliss/em7-contracts"
+  },
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@nomiclabs/hardhat-waffle": "^2.0.6",
+    "@types/sinon-chai": "^3.2.12",
+    "chai": "^5.1.0",
+    "ethereum-waffle": "^3.4.4",
+    "ethers": "^5.7.2",
+    "hardhat": "^2.21.0",
+    "hardhat-contract-sizer": "^2.10.0",
+    "hardhat-gas-reporter": "^2.2.1"
+  },
+  "dependencies": {
+    "@nomicfoundation/hardhat-verify": "^2.0.9",
+    "@nomiclabs/hardhat-etherscan": "^3.0.3",
+    "@openzeppelin/contracts": "^5.0.2",
+    "@prb/math": "^4.1.0",
+    "@uniswap/v2-core": "^1.0.1",
+    "dotenv": "^16.0.1",
+    "hardhat-ignore-warnings": "^0.2.12"
+  },
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "deploy": "npx hardhat run scripts/deploy.js --network skaletest",
+    "test": "npx hardhat test"
+  }
+}
+
