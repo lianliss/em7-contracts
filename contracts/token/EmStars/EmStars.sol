@@ -38,6 +38,7 @@ contract EmStars is ERC20, AccessControl, IEmStars {
     /// Total supply lockups and it's dates
     StorageQueue.Queue private _commonLockupDate;
     mapping (uint256 date => uint256 value) private _commonLockupValue;
+    uint256 private _lockedSupply;
 
     /// Lockup time for mint refundable funds
     uint256 private immutable DEFAULT_LOCKUP_TIME;
@@ -73,6 +74,37 @@ contract EmStars is ERC20, AccessControl, IEmStars {
     event MinterLockupTimeSet(address indexed minter, uint256 time);
     event IncomeDistributorSet(address incomeAddress);
 
+    /// @notice Unlocks ready lockups and increases holder balance;
+    /// @param holder Lockups owner;
+    /// @dev Does not unblock funds for blocked users;
+    function _unlock(address holder) internal {
+        if (_auth.isBlocked(holder)) return;
+        uint256 unlocks;
+        while (_lockupDate[holder].length() > 0) {
+            uint256 date = _lockupDate[holder].first();
+            if (date < block.timestamp) {
+                /// If the time has come
+                if (_commonLockupValue[date] > 0) {
+                    _commonLockupValue[date] -= _lockupValue[holder][date];
+                } else {
+                    _lockedSupply -= _lockupValue[holder][date];
+                }
+                _lockupDate[holder].popFirst();
+                unlocks += _lockupValue[holder][date];
+                delete _lockupValue[holder][date];
+            } else {
+                break;
+            }
+        }
+        if (unlocks > 0) {
+            _mint(holder, unlocks);
+            /// Deduct locked total supply
+            // _lockedSupply -= unlocks;
+            emit LockupsUnlocked(holder, unlocks, balanceOf(holder));
+        }
+        _unlockCommon();
+    }
+
     /// @notice Unlocks ready common lockups and increases total supply
     function _unlockCommon() internal {
         uint256 unlocks;
@@ -87,29 +119,9 @@ contract EmStars is ERC20, AccessControl, IEmStars {
             }
         }
         if (unlocks > 0) {
+            /// Increase stored unlocks
+            _lockedSupply += unlocks;
             emit CommonLockupsUnlocked(unlocks, totalSupply());
-        }
-    }
-
-    /// @notice Unlocks ready lockups and increases holder balance;
-    /// @param holder Lockups owner;
-    /// @dev Does not unblock funds for blocked users;
-    function _unlock(address holder) internal {
-        if (_auth.isBlocked(holder)) return;
-        uint256 unlocks;
-        while (_lockupDate[holder].length() > 0) {
-            uint256 date = _lockupDate[holder].first();
-            if (date < block.timestamp) {
-                _lockupDate[holder].popFirst();
-                unlocks += _lockupValue[holder][date];
-                delete _lockupValue[holder][date];
-            } else {
-                break;
-            }
-        }
-        if (unlocks > 0) {
-            _mint(holder, unlocks);
-            emit LockupsUnlocked(holder, unlocks, balanceOf(holder));
         }
     }
 
@@ -140,7 +152,6 @@ contract EmStars is ERC20, AccessControl, IEmStars {
     function _mintLockup(address holder, uint256 amount, uint256 lockupTime) internal {
         require(lockupTime % LOCKUP_UNIT == 0, "lockupTime must be a multiple of LOCKUP_UNIT");
         /// Unlock previous ready lockups
-        _unlockCommon();
         _unlock(holder);
 
         uint256 date = _getLockupDate(block.timestamp, lockupTime);
@@ -149,7 +160,10 @@ contract EmStars is ERC20, AccessControl, IEmStars {
             _lockupDate[holder].push(date);
         }
         _lockupValue[holder][date] += amount;
-        emit Transfer(address(0), holder, amount);
+        if (_commonLockupDate.length() == 0 || date > _commonLockupDate.last()) {
+            _commonLockupDate.push(date);
+        }
+        _commonLockupValue[date] += amount;
         emit LockupMinted(holder, date, amount);
     }
 
@@ -186,6 +200,37 @@ contract EmStars is ERC20, AccessControl, IEmStars {
         }
     }
 
+    /// @notice Returns common lockups sum
+    /// @return amount Lockups sum
+    function _getCommonLockupsBalance() internal view returns (uint256 amount) {
+        if (_commonLockupDate.length() == 0) {
+            return 0;
+        }
+        for (uint256 i = _commonLockupDate.length() - 1; i >= 0; i--) {
+            uint256 date = _commonLockupDate.at(i);
+            if (date < block.timestamp) {
+                break;
+            }
+            amount += _commonLockupValue[date];
+            if (i == 0) break;
+        }
+    }
+
+    /// @notice Returns holder unlocked lockups sum
+    /// @return amount Unlocked lockups sum
+    function _getUnlockedCommonLockupsBalance() internal view returns (uint256 amount) {
+        if (_commonLockupDate.length() == 0) {
+            return 0;
+        }
+        for (uint256 i; i < _commonLockupDate.length(); i++) {
+            uint256 date = _commonLockupDate.at(i);
+            if (date >= block.timestamp) {
+                break;
+            }
+            amount += _commonLockupValue[date];
+        }
+    }
+
     /// @notice Try to spend amount from holder lockups
     /// @param holder Lockups owner
     /// @param amount Amount to spend
@@ -198,7 +243,7 @@ contract EmStars is ERC20, AccessControl, IEmStars {
         MemoryQueue.Queue memory dates;
         MemoryQueue.Queue memory values;
 
-        while (amount > 0 || _lockupDate[holder].length() > 0) {
+        while (amount > 0 && _lockupDate[holder].length() > 0) {
             /// Current values
             uint256 date = _lockupDate[holder].first();
             uint256 value = _lockupValue[holder][date];
@@ -300,12 +345,12 @@ contract EmStars is ERC20, AccessControl, IEmStars {
             if (parent == address(0) || _auth.isBlocked(parent)) {
                 break;
             }
-            /// Decrease total percents
-            amountLeft -= refs[r].percents;
             /// Transfer income;
             uint256 income = amount * refs[r].percents / PERCENT_PRECISION;
             _transfer(holder, parent, income);
             emit RefIncomeSent(holder, refer, parent, income);
+            /// Decrease amount
+            amountLeft -= income;
             /// Next loop step;
             refer = parent;
             r++;
@@ -322,7 +367,6 @@ contract EmStars is ERC20, AccessControl, IEmStars {
     /// @param amount Token amount to spend;
     function _spend(address holder, uint256 amount) internal {
         /// Unlock previous ready lockups
-        _unlockCommon();
         _unlock(holder);
 
         (
@@ -379,7 +423,6 @@ contract EmStars is ERC20, AccessControl, IEmStars {
     /// @dev Require MINTER_ROLE
     function refundLockup(address holder, uint256 amount, uint256 date) public onlyRole(MINTER_ROLE) {
         /// Unlock previous ready lockups
-        _unlockCommon();
         _unlock(holder);
 
         uint256 lockupsBalance = _getLockupsBalance(holder);
@@ -387,10 +430,14 @@ contract EmStars is ERC20, AccessControl, IEmStars {
         if (_lockupValue[holder][date] >= amount) {
             /// If be able to refund a full amount from the one date
             _lockupValue[holder][date] -= amount;
+            /// Deduct locked total supply
+            // _lockedSupply -= amount;
             emit Refunded(holder, amount, amount, false);
         } else if (lockupsBalance + super.balanceOf(holder) >= amount) {
             /// If be able to refund a full amount
             (,,uint256 amountLeft) = _spendLockups(holder, amount);
+            /// Deduct locked total supply
+            // _lockedSupply -= amount - amountLeft;
             _burn(holder, amountLeft);
             /// Block user
             if (holder != address(_income)) {
@@ -401,7 +448,8 @@ contract EmStars is ERC20, AccessControl, IEmStars {
             /// Partial refund
             uint256 refunded = lockupsBalance + super.balanceOf(holder);
             _spendLockups(holder, lockupsBalance);
-            _burn(holder, super.balanceOf(holder));
+            /// Deduct locked total supply
+            // _lockedSupply -= lockupsBalance;
             /// Block user
             _auth.blockAccount(holder);
             emit Refunded(holder, amount, refunded, true);
@@ -420,6 +468,18 @@ contract EmStars is ERC20, AccessControl, IEmStars {
     /// @return Locked balance for payments;
     function lockedOf(address holder) public view returns (uint256) {
         return _getLockupsBalance(holder);
+    }
+
+    /// @notice Returns total supply with currently unlocked lockups;
+    /// @return Total Supply
+    function totalSupply() public view override returns (uint256) {
+        return super.totalSupply() + _lockedSupply + _getUnlockedCommonLockupsBalance();
+    }
+
+    /// @notice Returns total supply locked by dates;
+    /// @return Locked Total Supply
+    function lockedSupply() public view returns (uint256) {
+        return _getCommonLockupsBalance();
     }
 
     /// @notice Returns array of holder lockups with information when the unlock will be available;
@@ -445,7 +505,6 @@ contract EmStars is ERC20, AccessControl, IEmStars {
     /// @return Transaction success
     function transfer(address to, uint256 value) public override returns (bool) {
         /// Unlock available lockups first
-        _unlockCommon();
         _unlock(_msgSender());
 
         address owner = _msgSender();
@@ -462,7 +521,6 @@ contract EmStars is ERC20, AccessControl, IEmStars {
         address spender = _msgSender();
 
         /// Unlock available lockups first
-        _unlockCommon();
         _unlock(spender);
 
         _spendAllowance(from, spender, value);
@@ -473,7 +531,6 @@ contract EmStars is ERC20, AccessControl, IEmStars {
     /// @notice Unlock available holder lockups;
     /// @param holder Holder address;
     function unlockAvailable(address holder) public {
-        _unlockCommon();
         if (holder == address(_income)) {
             _unlockIncome();
         } else {
@@ -498,23 +555,5 @@ contract EmStars is ERC20, AccessControl, IEmStars {
         _income = IIncomeDistributor(incomeAddress);
         emit IncomeDistributorSet(incomeAddress);
     }
-
-
-
-
-    /// Debug
-
-    // function DEVgetLockupDates(address holder) public view returns (uint256[] memory) {
-    //     return _lockupDate[holder].values();
-    // }
-
-    // function DEVgetLockupValue(address holder, uint256 date) public view returns (uint256) {
-    //     return _lockupValue[holder][date];
-    // }
-
-    // function DEVpush(address holder, uint256 date) public {
-    //     _lockupDate[holder].push(date);
-    // }
-
 }
 

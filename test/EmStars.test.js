@@ -12,8 +12,8 @@ const DAY = HOUR * 24;
 
 // const LOCKUP_TIME = 95 * DAY;
 // const LOCKUP_UNIT = 5 * DAY;
-const LOCKUP_TIME = 15 * DAY;
-const LOCKUP_UNIT = 5 * DAY;
+const LOCKUP_TIME = 9 * DAY;
+const LOCKUP_UNIT = 1 * DAY;
 
 // Helper function to deploy and configure contracts
 async function deployAndSetupContracts() {
@@ -135,7 +135,6 @@ describe("EmStars Contract", function () {
     const AMOUNT_TO_SPEND = 10;
     await EmStars.spend(user.address, wei.to(AMOUNT_TO_SPEND));
     await increaseTime(50 * DAY);
-    console.log('IncomeDistributor', IncomeDistributor.address);
     await EmStars.unlockAvailable(IncomeDistributor.address);
     const incomeLocked = wei.from(await EmStars.lockedOf(IncomeDistributor.address));
     const incomeBalance = wei.from(await EmStars.balanceOf(IncomeDistributor.address));
@@ -143,13 +142,13 @@ describe("EmStars Contract", function () {
     const lockedLeft = wei.from(await EmStars.lockedOf(user.address));
     const balanceLeft = wei.from(await EmStars.balanceOf(user.address));
     
-    console.log('SPEND', {
-      incomeLocked,
-      incomeBalance,
-      incomeReceived,
-      lockedLeft,
-      balanceLeft,
-    });
+    // console.log('SPEND', {
+    //   incomeLocked,
+    //   incomeBalance,
+    //   incomeReceived,
+    //   lockedLeft,
+    //   balanceLeft,
+    // });
     
     // console.log('DATES USER', (await EmStars.DEVgetLockupDates(user.address)).map(n => n.toNumber()));
     // console.log('DATES INCOME', (await EmStars.DEVgetLockupDates(IncomeDistributor.address)).map(n => n.toNumber()));
@@ -194,17 +193,17 @@ describe("EmStars Contract", function () {
     const grandpaLocked = wei.from(await EmStars.lockedOf(grandpa.address));
     const grandpaBalance = wei.from(await EmStars.balanceOf(grandpa.address));
     
-    console.log('SPEND', {
-      incomeLocked,
-      incomeBalance,
-      incomeReceived,
-      lockedLeft,
-      balanceLeft,
-      parentLocked,
-      parentBalance,
-      grandpaLocked,
-      grandpaBalance,
-    });
+    // console.log('SPEND', {
+    //   incomeLocked,
+    //   incomeBalance,
+    //   incomeReceived,
+    //   lockedLeft,
+    //   balanceLeft,
+    //   parentLocked,
+    //   parentBalance,
+    //   grandpaLocked,
+    //   grandpaBalance,
+    // });
     
     // console.log('DATES USER', (await EmStars.DEVgetLockupDates(user.address)).map(n => n.toNumber()));
     // console.log('DATES INCOME', (await EmStars.DEVgetLockupDates(IncomeDistributor.address)).map(n => n.toNumber()));
@@ -213,5 +212,74 @@ describe("EmStars Contract", function () {
     expect(parentLocked + parentBalance).to.above(0);
     expect(grandpaLocked + grandpaBalance).to.above(0);
     expect(lockedLeft + balanceLeft).to.equal(balance - AMOUNT_TO_SPEND);
+  });
+  
+  it(`should be right totalSupply`, async function () {
+    const {expect} = await import("chai");
+    
+    const {
+      EmAuth,
+      EmReferral,
+      EmStars,
+      IncomeDistributor,
+    } = contracts;
+    
+    let balance = 0;
+    const AMOUNT_TO_MINT = 5;
+    const mint = async account => {
+      await EmStars.mintLockup(account.address, wei.to(AMOUNT_TO_MINT));
+      balance += AMOUNT_TO_MINT;
+    }
+    await mint(parent);
+    await increaseTime(LOCKUP_UNIT);
+    await increaseTime(LOCKUP_UNIT);
+    await mint(user);
+    await mint(parent);
+    await increaseTime(LOCKUP_UNIT);
+    await mint(user);
+    await increaseTime(LOCKUP_UNIT);
+    await mint(user);
+    await mint(parent);
+    
+    const before = {
+      parent: {
+        locked: wei.from(await EmStars.lockedOf(parent.address)),
+        balance: wei.from(await EmStars.balanceOf(parent.address)),
+      },
+      user: {
+        locked: wei.from(await EmStars.lockedOf(user.address)),
+        balance: wei.from(await EmStars.balanceOf(user.address)),
+      },
+      total: {
+        locked: wei.from(await EmStars.lockedSupply()),
+        balance: wei.from(await EmStars.totalSupply()),
+      },
+    }
+    await increaseTime(LOCKUP_TIME - LOCKUP_UNIT);
+    await EmStars.unlockAvailable(user.address);
+    const after = {
+      parent: {
+        locked: wei.from(await EmStars.lockedOf(parent.address)),
+        balance: wei.from(await EmStars.balanceOf(parent.address)),
+      },
+      user: {
+        locked: wei.from(await EmStars.lockedOf(user.address)),
+        balance: wei.from(await EmStars.balanceOf(user.address)),
+      },
+      total: {
+        locked: wei.from(await EmStars.lockedSupply()),
+        balance: wei.from(await EmStars.totalSupply()),
+      },
+    }
+    
+    console.log('BEFORE', before);
+    console.log('AFTER', after);
+    
+    expect(before.user.balance + before.user.locked).to.equal(balance / 2);
+    expect(before.parent.balance + before.parent.locked).to.equal(balance / 2);
+    expect(before.total.balance + before.total.locked).to.equal(balance);
+    expect(after.user.balance + after.user.locked).to.equal(balance / 2);
+    expect(after.parent.balance + after.parent.locked).to.equal(balance / 2);
+    expect(after.total.balance + after.total.locked).to.equal(balance);
   });
 });
