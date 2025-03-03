@@ -49,6 +49,10 @@ async function deployAndSetupContracts() {
     
     // Update dependencies
     await contract.EmStars.setIncomeDistributor(contract.IncomeDistributor.address);
+    await contract.EmAuth.grantRole(
+      await contract.EmAuth.BLACKLIST_ROLE(),
+      contract.EmStars.address,
+    )
     
     return contract;
   } catch (error) {
@@ -272,8 +276,8 @@ describe("EmStars Contract", function () {
       },
     }
     
-    console.log('BEFORE', before);
-    console.log('AFTER', after);
+    // console.log('BEFORE', before);
+    // console.log('AFTER', after);
     
     expect(before.user.balance + before.user.locked).to.equal(balance / 2);
     expect(before.parent.balance + before.parent.locked).to.equal(balance / 2);
@@ -281,5 +285,65 @@ describe("EmStars Contract", function () {
     expect(after.user.balance + after.user.locked).to.equal(balance / 2);
     expect(after.parent.balance + after.parent.locked).to.equal(balance / 2);
     expect(after.total.balance + after.total.locked).to.equal(balance);
+  });
+  
+  it(`should be able to refund and block account`, async function () {
+    const {expect} = await import("chai");
+    
+    const {
+      EmAuth,
+      EmReferral,
+      EmStars,
+      IncomeDistributor,
+    } = contracts;
+    
+    let balance = 0;
+    const AMOUNT_TO_MINT = 10;
+    const mint = async account => {
+      await EmStars.mintLockup(account.address, wei.to(AMOUNT_TO_MINT));
+      balance += AMOUNT_TO_MINT;
+    }
+    await mint(user);
+    await increaseTime(LOCKUP_UNIT);
+    await mint(user);
+    
+    const lockups = processLockups(await EmStars.getLockups(user.address));
+    // console.log('LOCKUPS', lockups);
+    
+    const before = {
+      user: {
+        locked: wei.from(await EmStars.lockedOf(user.address)),
+        balance: wei.from(await EmStars.balanceOf(user.address)),
+      },
+      total: {
+        locked: wei.from(await EmStars.lockedSupply()),
+        balance: wei.from(await EmStars.totalSupply()),
+      },
+    }
+    
+    await EmStars.refundLockup(user.address, wei.to(AMOUNT_TO_MINT / 2), lockups[0].untilTimestamp);
+    await EmStars.refundLockup(user.address, wei.to(AMOUNT_TO_MINT / 2), lockups[0].untilTimestamp);
+    await EmStars.refundLockup(user.address, wei.to(AMOUNT_TO_MINT / 2), lockups[0].untilTimestamp);
+    await EmStars.refundLockup(user.address, wei.to(AMOUNT_TO_MINT / 2), lockups[0].untilTimestamp);
+    
+    const after = {
+      user: {
+        locked: wei.from(await EmStars.lockedOf(user.address)),
+        balance: wei.from(await EmStars.balanceOf(user.address)),
+      },
+      total: {
+        locked: wei.from(await EmStars.lockedSupply()),
+        balance: wei.from(await EmStars.totalSupply()),
+      },
+    }
+    
+    await EmStars.refundLockup(user.address, wei.to(AMOUNT_TO_MINT / 2), lockups[0].untilTimestamp);
+    
+    // console.log('BEFORE', before);
+    // console.log('AFTER', after);
+    // console.log('AUTHS', await EmAuth.getAuths(user.address));
+    // console.log('IS BLOCKED', await EmAuth.isBlocked(user.address));
+    expect(after.user.balance + after.user.locked).to.equal(0);
+    expect(await EmAuth.isBlocked(user.address)).to.equal(true);
   });
 });

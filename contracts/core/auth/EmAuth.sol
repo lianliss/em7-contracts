@@ -24,7 +24,7 @@ contract EmAuth is AccessControl, IEmAuth {
     }
 
     function isBlocked(address account) public view returns (bool) {
-        return hasAuth(account, 0);
+        return _auths[account].contains(0);
     }
 
     function getAuths(address account) public view returns (uint256[] memory) {

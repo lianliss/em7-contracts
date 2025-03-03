@@ -82,13 +82,16 @@ contract EmStars is ERC20, AccessControl, IEmStars {
         uint256 unlocks;
         while (_lockupDate[holder].length() > 0) {
             uint256 date = _lockupDate[holder].first();
+            /// If the time has come
             if (date < block.timestamp) {
-                /// If the time has come
                 if (_commonLockupValue[date] > 0) {
+                    /// If common lockups is not merged decrease one date
                     _commonLockupValue[date] -= _lockupValue[holder][date];
                 } else {
+                    /// If common lockups is merged decreade locked total supply
                     _lockedSupply -= _lockupValue[holder][date];
                 }
+                /// Remove lockup
                 _lockupDate[holder].popFirst();
                 unlocks += _lockupValue[holder][date];
                 delete _lockupValue[holder][date];
@@ -425,31 +428,38 @@ contract EmStars is ERC20, AccessControl, IEmStars {
         /// Unlock previous ready lockups
         _unlock(holder);
 
-        uint256 lockupsBalance = _getLockupsBalance(holder);
+        uint256 lockupsBalance = lockedOf(holder);
 
         if (_lockupValue[holder][date] >= amount) {
             /// If be able to refund a full amount from the one date
             _lockupValue[holder][date] -= amount;
-            /// Deduct locked total supply
-            // _lockedSupply -= amount;
+            /// Reduce common lockups
+            _commonLockupValue[date] -= amount;
             emit Refunded(holder, amount, amount, false);
-        } else if (lockupsBalance + super.balanceOf(holder) >= amount) {
+        } else if (lockupsBalance >= amount) {
             /// If be able to refund a full amount
-            (,,uint256 amountLeft) = _spendLockups(holder, amount);
-            /// Deduct locked total supply
-            // _lockedSupply -= amount - amountLeft;
-            _burn(holder, amountLeft);
-            /// Block user
-            if (holder != address(_income)) {
-                _auth.blockAccount(holder);
+            (
+                uint256[] memory locksDates,
+                uint256[] memory locksValues,
+                uint256 amountLeft
+            ) = _spendLockups(holder, amount);
+            /// Reduce common lockups
+            for (uint256 i; i < locksDates.length; i++) {
+                _commonLockupValue[locksDates[i]] -= locksValues[i];
             }
-            emit Refunded(holder, amount, amount, true);
+            emit Refunded(holder, amount, amount - amountLeft, true);
         } else if (holder != address(_income)) {
             /// Partial refund
-            uint256 refunded = lockupsBalance + super.balanceOf(holder);
-            _spendLockups(holder, lockupsBalance);
-            /// Deduct locked total supply
-            // _lockedSupply -= lockupsBalance;
+            uint256 refunded = lockupsBalance;
+            (
+                uint256[] memory locksDates,
+                uint256[] memory locksValues,
+            ) = _spendLockups(holder, lockupsBalance);
+            /// Reduce common lockups
+            for (uint256 i; i < locksDates.length; i++) {
+                _commonLockupValue[locksDates[i]] -= locksValues[i];
+            }
+            
             /// Block user
             _auth.blockAccount(holder);
             emit Refunded(holder, amount, refunded, true);
