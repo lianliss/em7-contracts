@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "hardhat/console.sol";
-
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IEmAuth} from "../../core/auth/interfaces/IEmAuth.sol";
@@ -10,15 +8,25 @@ import {MemoryQueue} from "../../utils/sequence/MemoryQueue.sol";
 import {StorageQueue} from "../../utils/sequence/StorageQueue.sol";
 import {OrderedArrays} from "../../utils/sequence/OrderedArrays.sol";
 import {IEmStars, Lockup} from "./interfaces/IEmStars.sol";
+import {IEmStarsERC20Extention} from "./interfaces/IEmStarsERC20Extention.sol";
 import {IEmReferralPercents, ReferralPercents} from "../../core/referral/interfaces/IEmReferralPercents.sol";
 import {IIncomeDistributor} from "../../core/income/interfaces/IIncomeDistributor.sol";
 import {PERCENT_PRECISION} from "../../core/const.sol";
 
-contract EmStars is ERC20, AccessControl, IEmStars {
+/**
+  * @title EmSeven payments token
+  * @author Danil Sakhinov
+  * @notice Added functionality of mint tokens with a lock for a certain period,
+  * distribution of payment by referral system with sending income to a special contract.
+  * There is an option to refund locked tokens as an anti-abuse system
+  */
+contract EmStars is ERC20, AccessControl, IEmStars, IEmStarsERC20Extention {
 
     using MemoryQueue for MemoryQueue.Queue;
     using StorageQueue for StorageQueue.Queue;
+    bytes32 public constant BACKEND_ROLE = keccak256("BACKEND_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
     bytes32 public constant SPENDER_ROLE = keccak256("SPENDER_ROLE");
 
     /// Auth contract for users ban
@@ -47,32 +55,230 @@ contract EmStars is ERC20, AccessControl, IEmStars {
     mapping(address minter => uint256 lockupTime) private minterLockupTime;
 
     constructor(
-        uint256 defaultLockupTime, /// Default 95 days = 8208000 seconds
-        uint256 lockupUnitSeconds, /// Default 5 days = 432000 seconds
+        uint256 defaultLockupTime, /// Default 91 days = 7_862_400 seconds
+        uint256 lockupUnitSeconds, /// Default 7 days = 604_800 seconds
         address authAddress,
         address refAddress
     ) ERC20("EmStars", "EMSTR") {
+        /// Grant admin roles
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _grantRole(MINTER_ROLE, _msgSender());
+        _grantRole(BURNER_ROLE, _msgSender());
+        _grantRole(BACKEND_ROLE, _msgSender());
         _grantRole(SPENDER_ROLE, _msgSender());
 
+        /// Set constants
         DEFAULT_LOCKUP_TIME = defaultLockupTime;
         LOCKUP_UNIT = lockupUnitSeconds;
+
+        /// Connect external contracts
         _auth = IEmAuth(authAddress);
         _ref = IEmReferralPercents(refAddress);
     }
 
-    event CommonLockupsUnlocked(uint256 amount, uint256 totalSupply);
-    event LockupsUnlocked(address indexed holder, uint256 amount, uint256 balance);
-    event LockupMinted(address indexed holder, uint256 indexed date, uint256 amount);
-    event IncomeSent(address indexed spender, uint256 amount);
-    event IncomeLocked(address indexed spender, uint256 amount);
-    event RefIncomeSent(address indexed spender, address indexed refer, address indexed holder, uint256 amount);
-    event RefIncomeLocked(address indexed spender, address indexed refer, address indexed holder, uint256 amount);
-    event Spent(address indexed holder, address indexed caller, uint256 amount);
-    event Refunded(address indexed holder, uint256 amount, uint256 refunded, bool blocked);
-    event MinterLockupTimeSet(address indexed minter, uint256 time);
-    event IncomeDistributorSet(address incomeAddress);
+
+    /// Public methods
+
+    /// @notice Returns array of holder lockups with information when the unlock will be available;
+    /// @param holder Holder address;
+    /// @return Array of holder lockups;
+    function getLockups(address holder) public view returns (Lockup[] memory) {
+        uint256 length = _lockupDate[holder].length();
+        Lockup[] memory lockups = new Lockup[](length);
+        for (uint256 i = _lockupDate[holder].length() - 1; i >= 0; i--) {
+            lockups[i].untilTimestamp = _lockupDate[holder].at(i);
+            if (lockups[i].untilTimestamp < block.timestamp) {
+                break;
+            }
+            lockups[i].amount = _lockupValue[holder][lockups[i].untilTimestamp];
+            if (i == 0) break;
+        }
+        return lockups;
+    }
+
+    /// @notice Unlock available holder lockups;
+    /// @param holder Holder address;
+    /// @dev Everyone can unlock everyone's locked balance
+    function unlockAvailable(address holder) public {
+        if (holder == address(_income)) {
+            _unlockIncome();
+        } else {
+            _unlock(holder);
+        }
+    }
+
+    /// Modified default ERC20 methods
+
+    /// @notice Returns holder balance of unlocked funds;
+    /// @param holder Holder address;
+    /// @return Available balance
+    function balanceOf(address holder) public view override(ERC20, IEmStarsERC20Extention) returns (uint256) {
+        return super.balanceOf(holder) + _getUnlockedLockupsBalance(holder);
+    }
+
+    /// @notice Returns holder locked balance available for payments only;
+    /// @param holder Holder address;
+    /// @return Locked balance for payments;
+    function lockedOf(address holder) public view returns (uint256) {
+        return _getLockupsBalance(holder);
+    }
+
+    /// @notice Returns total supply with currently unlocked lockups;
+    /// @return Total Supply
+    function totalSupply() public view override(ERC20, IEmStarsERC20Extention) returns (uint256) {
+        return super.totalSupply() + _lockedSupply + _getUnlockedCommonLockupsBalance();
+    }
+
+    /// @notice Returns total supply locked by dates;
+    /// @return Locked Total Supply
+    function lockedSupply() public view returns (uint256) {
+        return _getCommonLockupsBalance();
+    }
+
+    /// @notice Transfer current holder funds;
+    /// @param to Recipient address;
+    /// @param value Tokens to transfer;
+    /// @return Transaction success
+    function transfer(address to, uint256 value) public override(ERC20, IEmStarsERC20Extention) returns (bool) {
+        /// Unlock available lockups first
+        _unlock(_msgSender());
+
+        address owner = _msgSender();
+        _transfer(owner, to, value);
+        return true;
+    }
+
+    /// @notice Transfer holder funds;
+    /// @param from Holder address;
+    /// @param to Recipient address;
+    /// @param value Tokens to transfer;
+    /// @return Transaction success
+    function transferFrom(address from, address to, uint256 value) public override(ERC20, IEmStarsERC20Extention) returns (bool) {
+        address spender = _msgSender();
+
+        /// Unlock available lockups first
+        _unlock(spender);
+
+        _spendAllowance(from, spender, value);
+        _transfer(from, to, value);
+        return true;
+    }
+
+
+    /// External methods with roles
+
+    /// @notice Mint funds;
+    /// @param holder Holder address;
+    /// @param amount Token amount to mint;
+    /// @dev Require MINTER_ROLE
+    function mint(address holder, uint256 amount) external onlyRole(MINTER_ROLE) {
+        _mint(holder, amount);
+    }
+
+    /// @notice Burn unlocked funds;
+    /// @param holder Holder address;
+    /// @param amount Token amount to burn;
+    /// @dev Require BURNER_ROLE
+    function burn(address holder, uint256 amount) external onlyRole(BURNER_ROLE) {
+        _spendAllowance(holder, _msgSender(), amount);
+        _burn(holder, amount);
+    }
+
+    /// @notice Spend tokens from holder;
+    /// @param holder Holder address;
+    /// @param amount Token amount to spend;
+    /// @dev Require SPENDER_ROLE
+    function spend(address holder, uint256 amount) external onlyRole(SPENDER_ROLE) {
+        require(!_auth.isBlocked(holder), "Account blocked");
+        uint256 balance = balanceOf(holder);
+        if (balance < amount) {
+            revert ERC20InsufficientBalance(holder, balance, amount);
+        }
+        _spend(holder, amount);
+        emit Spent(holder, _msgSender(), amount);
+    }
+
+    /// @notice Mint funds with time lockup;
+    /// @param holder Holder address;
+    /// @param amount Token amount to mint;
+    /// @dev Require BACKEND_ROLE
+    function mintLockup(address holder, uint256 amount) external onlyRole(BACKEND_ROLE) {
+        uint256 lockupTime = minterLockupTime[_msgSender()] == 0
+            ? DEFAULT_LOCKUP_TIME
+            : minterLockupTime[_msgSender()];
+        _mintLockup(holder, amount, lockupTime);
+    }
+
+    /// @notice Refund minted locked funds;
+    /// @param holder Holder address;
+    /// @param amount Token amount to refund;
+    /// @param date Date of lockup
+    /// @dev Require BACKEND_ROLE
+    function refundLockup(address holder, uint256 amount, uint256 date) external onlyRole(BACKEND_ROLE) {
+        /// Unlock previous ready lockups
+        _unlock(holder);
+
+        uint256 lockupsBalance = lockedOf(holder);
+
+        if (_lockupValue[holder][date] >= amount) {
+            /// If be able to refund a full amount from the one date
+            _lockupValue[holder][date] -= amount;
+            /// Reduce common lockups
+            _commonLockupValue[date] -= amount;
+            emit Refunded(holder, amount, amount, false);
+        } else if (lockupsBalance >= amount) {
+            /// If be able to refund a full amount
+            (
+                uint256[] memory locksDates,
+                uint256[] memory locksValues,
+                uint256 amountLeft
+            ) = _spendLockups(holder, amount);
+            /// Reduce common lockups
+            for (uint256 i; i < locksDates.length; i++) {
+                _commonLockupValue[locksDates[i]] -= locksValues[i];
+            }
+            emit Refunded(holder, amount, amount - amountLeft, true);
+        } else if (holder != address(_income)) {
+            /// Partial refund
+            uint256 refunded = lockupsBalance;
+            (
+                uint256[] memory locksDates,
+                uint256[] memory locksValues,
+            ) = _spendLockups(holder, lockupsBalance);
+            /// Reduce common lockups
+            for (uint256 i; i < locksDates.length; i++) {
+                _commonLockupValue[locksDates[i]] -= locksValues[i];
+            }
+            
+            /// Block user
+            _auth.blockAccount(holder);
+            emit Refunded(holder, amount, refunded, true);
+        }
+    }
+
+
+    /// Admin methods
+
+    /// @notice Sets custom lockup time for specific backend
+    /// @param minter Address with role BACKEND_ROLE
+    /// @param lockupTime Time in seconds for lockup period
+    /// @dev Require role DEFAULT_ADMIN_ROLE
+    function setMinterLockupTime(address minter, uint256 lockupTime) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(lockupTime % LOCKUP_UNIT == 0, "lockupTime must be a multiple of LOCKUP_UNIT");
+        minterLockupTime[minter] = lockupTime;
+        emit MinterLockupTimeSet(minter, lockupTime);
+    }
+
+    /// @notice Sets income distributor address
+    /// @param incomeAddress Address of income distributor contract
+    /// @dev Require role DEFAULT_ADMIN_ROLE
+    function setIncomeDistributor(address incomeAddress) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        _income = IIncomeDistributor(incomeAddress);
+        emit IncomeDistributorSet(incomeAddress);
+    }
+
+
+    /// Internal methods
 
     /// @notice Unlocks ready lockups and increases holder balance;
     /// @param holder Lockups owner;
@@ -362,6 +568,9 @@ contract EmStars is ERC20, AccessControl, IEmStars {
         /// Send the rest to the income contract
         address incomeAddress = address(_income);
         _transfer(holder, incomeAddress, amountLeft);
+        /// Allow to spend
+        _approve(incomeAddress, incomeAddress, amountLeft);
+        _income.distributeFrom(incomeAddress, amountLeft);
         emit IncomeSent(holder, amountLeft);
     }
 
@@ -372,198 +581,23 @@ contract EmStars is ERC20, AccessControl, IEmStars {
         /// Unlock previous ready lockups
         _unlock(holder);
 
+        /// Spend locked tokens without allowance
         (
             uint256[] memory locksDates,
             uint256[] memory locksValues,
             uint256 amountLeft
         ) = _spendLockups(holder, amount);
 
+        /// Load referral tree
         ReferralPercents[] memory refs = _ref.getReferralPercents(holder);
+        /// Distribute locked tokens to referral tree and income contract
         _distributeLockedIncome(holder, refs, locksDates, locksValues);
 
         if (amountLeft > 0) {
+            /// Spend allowance and transfer unlocked tokens
+            _spendAllowance(holder, _msgSender(), amountLeft);
             _distributeIncome(holder, amountLeft, refs);
         }
-    }
-
-    /// @notice Spend tokens from holder;
-    /// @param holder Holder address;
-    /// @param amount Token amount to spend;
-    /// @dev Require SPENDER_ROLE
-    function spend(address holder, uint256 amount) public onlyRole(SPENDER_ROLE) {
-        require(!_auth.isBlocked(holder), "Account blocked");
-        uint256 balance = balanceOf(holder);
-        if (balance < amount) {
-            revert ERC20InsufficientBalance(holder, balance, amount);
-        }
-        _spend(holder, amount);
-        emit Spent(holder, _msgSender(), amount);
-    }
-
-    /// @notice Mint funds with time lockup;
-    /// @param holder Holder address;
-    /// @param amount Token amount to mint;
-    /// @dev Require MINTER_ROLE
-    function mintLockup(address holder, uint256 amount) public onlyRole(MINTER_ROLE) {
-        uint256 lockupTime = minterLockupTime[_msgSender()] == 0
-            ? DEFAULT_LOCKUP_TIME
-            : minterLockupTime[_msgSender()];
-        _mintLockup(holder, amount, lockupTime);
-    }
-
-    /// @notice Mint funds;
-    /// @param holder Holder address;
-    /// @param amount Token amount to mint;
-    /// @dev Require MINTER_ROLE
-    function mint(address holder, uint256 amount) public onlyRole(MINTER_ROLE) {
-        _mint(holder, amount);
-    }
-
-    /// @notice Refund minted locked funds;
-    /// @param holder Holder address;
-    /// @param amount Token amount to refund;
-    /// @param date Date of lockup
-    /// @dev Require MINTER_ROLE
-    function refundLockup(address holder, uint256 amount, uint256 date) public onlyRole(MINTER_ROLE) {
-        /// Unlock previous ready lockups
-        _unlock(holder);
-
-        uint256 lockupsBalance = lockedOf(holder);
-
-        if (_lockupValue[holder][date] >= amount) {
-            /// If be able to refund a full amount from the one date
-            _lockupValue[holder][date] -= amount;
-            /// Reduce common lockups
-            _commonLockupValue[date] -= amount;
-            emit Refunded(holder, amount, amount, false);
-        } else if (lockupsBalance >= amount) {
-            /// If be able to refund a full amount
-            (
-                uint256[] memory locksDates,
-                uint256[] memory locksValues,
-                uint256 amountLeft
-            ) = _spendLockups(holder, amount);
-            /// Reduce common lockups
-            for (uint256 i; i < locksDates.length; i++) {
-                _commonLockupValue[locksDates[i]] -= locksValues[i];
-            }
-            emit Refunded(holder, amount, amount - amountLeft, true);
-        } else if (holder != address(_income)) {
-            /// Partial refund
-            uint256 refunded = lockupsBalance;
-            (
-                uint256[] memory locksDates,
-                uint256[] memory locksValues,
-            ) = _spendLockups(holder, lockupsBalance);
-            /// Reduce common lockups
-            for (uint256 i; i < locksDates.length; i++) {
-                _commonLockupValue[locksDates[i]] -= locksValues[i];
-            }
-            
-            /// Block user
-            _auth.blockAccount(holder);
-            emit Refunded(holder, amount, refunded, true);
-        }
-    }
-
-    /// @notice Returns holder balance of unlocked funds;
-    /// @param holder Holder address;
-    /// @return Available balance
-    function balanceOf(address holder) public view override returns (uint256) {
-        return super.balanceOf(holder) + _getUnlockedLockupsBalance(holder);
-    }
-
-    /// @notice Returns holder locked balance available for payments only;
-    /// @param holder Holder address;
-    /// @return Locked balance for payments;
-    function lockedOf(address holder) public view returns (uint256) {
-        return _getLockupsBalance(holder);
-    }
-
-    /// @notice Returns total supply with currently unlocked lockups;
-    /// @return Total Supply
-    function totalSupply() public view override returns (uint256) {
-        return super.totalSupply() + _lockedSupply + _getUnlockedCommonLockupsBalance();
-    }
-
-    /// @notice Returns total supply locked by dates;
-    /// @return Locked Total Supply
-    function lockedSupply() public view returns (uint256) {
-        return _getCommonLockupsBalance();
-    }
-
-    /// @notice Returns array of holder lockups with information when the unlock will be available;
-    /// @param holder Holder address;
-    /// @return Array of holder lockups;
-    function getLockups(address holder) public view returns (Lockup[] memory) {
-        uint256 length = _lockupDate[holder].length();
-        Lockup[] memory lockups = new Lockup[](length);
-        for (uint256 i = _lockupDate[holder].length() - 1; i >= 0; i--) {
-            lockups[i].untilTimestamp = _lockupDate[holder].at(i);
-            if (lockups[i].untilTimestamp < block.timestamp) {
-                break;
-            }
-            lockups[i].amount = _lockupValue[holder][lockups[i].untilTimestamp];
-            if (i == 0) break;
-        }
-        return lockups;
-    }
-
-    /// @notice Transfer current holder funds;
-    /// @param to Recipient address;
-    /// @param value Tokens to transfer;
-    /// @return Transaction success
-    function transfer(address to, uint256 value) public override returns (bool) {
-        /// Unlock available lockups first
-        _unlock(_msgSender());
-
-        address owner = _msgSender();
-        _transfer(owner, to, value);
-        return true;
-    }
-
-    /// @notice Transfer holder funds;
-    /// @param from Holder address;
-    /// @param to Recipient address;
-    /// @param value Tokens to transfer;
-    /// @return Transaction success
-    function transferFrom(address from, address to, uint256 value) public override returns (bool) {
-        address spender = _msgSender();
-
-        /// Unlock available lockups first
-        _unlock(spender);
-
-        _spendAllowance(from, spender, value);
-        _transfer(from, to, value);
-        return true;
-    }
-
-    /// @notice Unlock available holder lockups;
-    /// @param holder Holder address;
-    function unlockAvailable(address holder) public {
-        if (holder == address(_income)) {
-            _unlockIncome();
-        } else {
-            _unlock(holder);
-        }
-    }
-
-    /// @notice Sets custom lockup time for specific minter
-    /// @param minter Address with role MINTER_ROLE
-    /// @param lockupTime Time in seconds for lockup period
-    /// @dev Require role DEFAULT_ADMIN_ROLE
-    function setMinterLockupTime(address minter, uint256 lockupTime) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(lockupTime % LOCKUP_UNIT == 0, "lockupTime must be a multiple of LOCKUP_UNIT");
-        minterLockupTime[minter] = lockupTime;
-        emit MinterLockupTimeSet(minter, lockupTime);
-    }
-
-    /// @notice Sets income distributor address
-    /// @param incomeAddress Address of income distributor contract
-    /// @dev Require role DEFAULT_ADMIN_ROLE
-    function setIncomeDistributor(address incomeAddress) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        _income = IIncomeDistributor(incomeAddress);
-        emit IncomeDistributorSet(incomeAddress);
     }
 }
 

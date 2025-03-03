@@ -105,13 +105,13 @@ describe("EmStars Contract", function () {
     const lockups = processLockups(await EmStars.getLockups(user.address));
     let lockupsSum = 0;
     lockups.map(l => lockupsSum += l.amount);
-    console.log('getLockups SUM', lockupsSum);
+    // console.log('getLockups SUM', lockupsSum);
     const lockedOf = wei.from(await EmStars.lockedOf(user.address));
     const balanceOf = wei.from(await EmStars.balanceOf(user.address));
     // console.log('Lockups', lockups);
-    console.log('lockedOf', lockedOf);
-    console.log('balanceOf', balanceOf);
-    console.log('Total balance', balanceOf + lockedOf);
+    // console.log('lockedOf', lockedOf);
+    // console.log('balanceOf', balanceOf);
+    // console.log('Total balance', balanceOf + lockedOf);
     
     expect(balanceOf + lockedOf).to.equal(balance);
   });
@@ -137,6 +137,7 @@ describe("EmStars Contract", function () {
     // console.log('DATES USER', (await EmStars.DEVgetLockupDates(user.address)).map(n => n.toNumber()));
     
     const AMOUNT_TO_SPEND = 10;
+    await EmStars.connect(user).approve(owner.address, wei.to(AMOUNT_TO_SPEND));
     await EmStars.spend(user.address, wei.to(AMOUNT_TO_SPEND));
     await increaseTime(50 * DAY);
     await EmStars.unlockAvailable(IncomeDistributor.address);
@@ -183,6 +184,7 @@ describe("EmStars Contract", function () {
     await EmReferral.addRelation(parent.address, user.address);
     
     const AMOUNT_TO_SPEND = 10;
+    await EmStars.connect(user).approve(owner.address, wei.to(AMOUNT_TO_SPEND));
     await EmStars.spend(user.address, wei.to(AMOUNT_TO_SPEND));
     
     const incomeLocked = wei.from(await EmStars.lockedOf(IncomeDistributor.address));
