@@ -17,6 +17,7 @@ abstract contract EmERC721Context {
     mapping(uint256 tokenId => address) internal _tokenApprovals;
     mapping(address owner => mapping(address operator => bool)) internal _operatorApprovals;
     mapping(uint256 tokenId => uint256 typeId) internal _tokenTypes;
+    uint256 _typesIndex = 1;
 
     mapping(uint256 tokenId => address) internal _owners;
     mapping(address owner => uint256) internal _balances;

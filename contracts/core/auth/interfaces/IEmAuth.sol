@@ -10,6 +10,7 @@ interface IEmAuth {
 
     function hasAuth(address account, uint256 level) external view returns (bool);
     function isBlocked(address account) external view returns (bool);
+    function banCheck(address account) external view;
     function getAuths(address account) external view returns (uint256[] memory);
     function blockAccount(address account) external;
     function unblockAccount(address account) external;

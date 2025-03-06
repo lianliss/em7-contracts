@@ -27,6 +27,10 @@ contract EmAuth is AccessControl, IEmAuth {
         return _auths[account].contains(0);
     }
 
+    function banCheck(address account) public view {
+        require(!isBlocked(account), "Account is blocked");
+    }
+
     function getAuths(address account) public view returns (uint256[] memory) {
         if (isBlocked(account)) {
             return new uint256[](0);
@@ -51,7 +55,7 @@ contract EmAuth is AccessControl, IEmAuth {
     }
 
     function addAccountAuth(address account, uint256 level) public onlyRole(AUTHORIZER_ROLE) {
-        require(!isBlocked(account), "Account blocked");
+        banCheck(account);
         _auths[account].add(level);
         emit AccountAuthorized(account, level);
     }

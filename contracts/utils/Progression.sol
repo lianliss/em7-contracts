@@ -10,7 +10,7 @@ library Progression {
         uint256 step;
     }
 
-    function get(ProgressionParams storage params, uint256 level) external view returns (uint256) {
+    function get(ProgressionParams memory params, uint256 level) internal pure returns (uint256) {
         return params.base
             * uint256(params.geometric)**level
             + params.step * level;
