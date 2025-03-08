@@ -30,9 +30,9 @@ contract EmStars is ERC20, AccessControl, IEmStars, IEmStarsERC20Extention {
     bytes32 public constant SPENDER_ROLE = keccak256("SPENDER_ROLE");
 
     /// Auth contract for users ban
-    IEmAuth private _auth;
+    IEmAuth private immutable _auth;
     /// Referral tree getter
-    IEmReferralPercents private _ref;
+    IEmReferralPercents private immutable _ref;
     /// Income distribution
     IIncomeDistributor private _income;
 
@@ -189,12 +189,26 @@ contract EmStars is ERC20, AccessControl, IEmStars, IEmStarsERC20Extention {
     /// @param amount Token amount to spend;
     /// @dev Require SPENDER_ROLE
     function spend(address holder, uint256 amount) external onlyRole(SPENDER_ROLE) {
-        require(!_auth.isBlocked(holder), "Account blocked");
+        _auth.banCheck(holder);
         uint256 balance = balanceOf(holder);
         if (balance < amount) {
             revert ERC20InsufficientBalance(holder, balance, amount);
         }
-        _spend(holder, amount);
+        _spend(holder, amount, true);
+        emit Spent(holder, _msgSender(), amount);
+    }
+
+    /// @notice Spend only unlocked tokens from holder;
+    /// @param holder Holder address;
+    /// @param amount Token amount to spend;
+    /// @dev Require SPENDER_ROLE
+    function spendUnlocked(address holder, uint256 amount) external onlyRole(SPENDER_ROLE) {
+        _auth.banCheck(holder);
+        uint256 balance = balanceOf(holder);
+        if (balance < amount) {
+            revert ERC20InsufficientBalance(holder, balance, amount);
+        }
+        _spend(holder, amount, false);
         emit Spent(holder, _msgSender(), amount);
     }
 
@@ -577,26 +591,35 @@ contract EmStars is ERC20, AccessControl, IEmStars, IEmStarsERC20Extention {
     /// @notice Spend token amount by holder.
     /// @param holder Holder address;
     /// @param amount Token amount to spend;
-    function _spend(address holder, uint256 amount) internal {
+    /// @param isSpendLocked Spend locked tokens;
+    function _spend(address holder, uint256 amount, bool isSpendLocked) internal {
         /// Unlock previous ready lockups
         _unlock(holder);
 
-        /// Spend locked tokens without allowance
-        (
-            uint256[] memory locksDates,
-            uint256[] memory locksValues,
-            uint256 amountLeft
-        ) = _spendLockups(holder, amount);
+        if (isSpendLocked) {
+            /// Spend locked tokens without allowance
+            (
+                uint256[] memory locksDates,
+                uint256[] memory locksValues,
+                uint256 amountLeft
+            ) = _spendLockups(holder, amount);
 
-        /// Load referral tree
-        ReferralPercents[] memory refs = _ref.getReferralPercents(holder);
-        /// Distribute locked tokens to referral tree and income contract
-        _distributeLockedIncome(holder, refs, locksDates, locksValues);
+            /// Load referral tree
+            ReferralPercents[] memory refs = _ref.getReferralPercents(holder);
+            /// Distribute locked tokens to referral tree and income contract
+            _distributeLockedIncome(holder, refs, locksDates, locksValues);
 
-        if (amountLeft > 0) {
+            if (amountLeft > 0) {
+                /// Spend allowance and transfer unlocked tokens
+                _spendAllowance(holder, _msgSender(), amountLeft);
+                _distributeIncome(holder, amountLeft, refs);
+            }   
+        } else {
+            /// Load referral tree
+            ReferralPercents[] memory refs = _ref.getReferralPercents(holder);
             /// Spend allowance and transfer unlocked tokens
-            _spendAllowance(holder, _msgSender(), amountLeft);
-            _distributeIncome(holder, amountLeft, refs);
+            _spendAllowance(holder, _msgSender(), amount);
+            _distributeIncome(holder, amount, refs);
         }
     }
 }

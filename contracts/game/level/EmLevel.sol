@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {IEmAuth} from "../auth/interfaces/IEmAuth.sol";
+import {IEmAuth} from "../../core/auth/interfaces/IEmAuth.sol";
 import {IEmLevel, LevelReward} from "./interfaces/IEmLevel.sol";
 import {Progression} from "../../utils/Progression.sol";
 import {MemoryQueue} from "../../utils/sequence/MemoryQueue.sol";

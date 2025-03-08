@@ -9,6 +9,7 @@ interface IEmStarsExternal {
 
     /// External spenders method
     function spend(address holder, uint256 amount) external;
+    function spendUnlocked(address holder, uint256 amount) external;
 
     /// Backend minter methods
     function mintLockup(address holder, uint256 amount) external;
