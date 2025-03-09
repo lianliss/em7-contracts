@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "contracts/Proxy/IProxy.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {IProxy} from "contracts/Proxy/IProxy.sol";
 
 abstract contract Proxy is IProxy, AccessControl {
 
-    IProxy private proxy;
+    IProxy private _proxy;
 
     bytes32 public constant PROXY_ROLE = keccak256("PROXY_ROLE");
 
@@ -23,11 +23,11 @@ abstract contract Proxy is IProxy, AccessControl {
         return (success, data);
     }
 
-    function setProxy(address proxyAddress) internal virtual {
-        proxy = IProxy(proxyAddress);
+    function _setProxy(address proxyAddress) internal virtual {
+        _proxy = IProxy(proxyAddress);
     }
 
-    function getProxy() internal view virtual returns (IProxy) {
-        return proxy;
+    function _getProxy() internal view virtual returns (IProxy) {
+        return _proxy;
     }
 }
