@@ -25,6 +25,8 @@ interface IEmResFactory is IAccessControl {
     function createResource(string calldata name, string calldata symbol) external;
     function removeResource(address resource) external;
     function getResources() external view returns (ResourceData[] memory);
+    function at(uint256 index) external view returns (ResourceData memory);
+    function addressAt(uint256 index) external view returns (address);
     function getWhitelist() external view returns (address[] memory);
 
 }

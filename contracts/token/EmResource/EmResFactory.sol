@@ -33,12 +33,22 @@ contract EmResFactory is AccessControl, IEmResFactory {
         ResourceData[] memory data = new ResourceData[](length);
 
         for (uint256 i; i < length; i++) {
-            data[i].resource = _resources.at(i);
-            IERC20Metadata token = IERC20Metadata(data[i].resource);
-            data[i].name = token.name();
-            data[i].symbol = token.symbol();
+            data[i] = at(i);
         }
         return data;
+    }
+
+    function at(uint256 index) public view returns (ResourceData memory) {
+        ResourceData memory data; 
+        data.resource = _resources.at(index);
+        IERC20Metadata token = IERC20Metadata(data.resource);
+        data.name = token.name();
+        data.symbol = token.symbol();
+        return data;
+    }
+
+    function addressAt(uint256 index) public view returns (address) {
+        return _resources.at(index);
     }
 
     function getWhitelist() public view returns (address[] memory) {
