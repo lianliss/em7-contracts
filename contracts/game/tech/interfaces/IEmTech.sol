@@ -20,11 +20,15 @@ interface IEmTech {
     event ModSet(address indexed user, bytes32 sourceId, uint256 value);
     event ModUnset(address indexed user, bytes32 sourceId);
 
+    /// @notice Parent technology required;
+    /// @param parentTech Parent technology index;
+    error ParentTechRequired(uint256 parentTech);
+
     function getCount() external view returns (uint256);
     function getTree(uint256 offset, uint256 limit) external view returns (Tech[] memory);
     function haveTech(address user, uint256 techIndex) external view returns (bool);
     function research(uint256 techIndex) external;
-    function researchFor(address user, uint256 techIndex) external;
+    function researchFor(address user, uint256 techIndex, bool force) external;
     function setMod(address user, bytes32 sourceId, uint256 value) external;
     function unsetMod(address user, bytes32 sourceId) external;
     function addTech(string calldata title, uint256 price, uint256 parentTech) external;

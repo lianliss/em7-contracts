@@ -78,7 +78,7 @@ contract EmTech is AccessControl, IEmTech {
             _science().burn(user, price);
             emit ScienceBurned(user, price);
         }
-        _research(user, techIndex);
+        _research(user, techIndex, false);
     }
 
     /// External modificator methods
@@ -86,8 +86,8 @@ contract EmTech is AccessControl, IEmTech {
     /// @notice Researches a technology for user for free;
     /// @param user Account address;
     /// @param techIndex Technology index;
-    function researchFor(address user, uint256 techIndex) public onlyRole(MOD_ROLE) {
-        _research(user, techIndex);
+    function researchFor(address user, uint256 techIndex, bool force) public onlyRole(MOD_ROLE) {
+        _research(user, techIndex, force);
     }
 
     /// @notice Sets user's science discount size
@@ -142,10 +142,15 @@ contract EmTech is AccessControl, IEmTech {
 
     /// Internal methods
 
-    function _research(address user, uint256 techIndex) internal {
+    function _research(address user, uint256 techIndex, bool force) internal {
         _checkExists(techIndex);
         require(!_users[user][techIndex], "Technology already researched");
         require(!_tech[techIndex].disabled, "Technology disabled");
+
+        uint256 parentTech = _tech[techIndex].parentTech;
+        if (!force && parentTech != 0 && !haveTech(user, parentTech)) {
+            revert ParentTechRequired(parentTech);
+        }
         _users[user][techIndex] = true;
         emit TechResearched(user, techIndex);
     }
