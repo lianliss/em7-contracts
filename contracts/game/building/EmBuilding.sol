@@ -8,9 +8,10 @@ import "./interfaces/IEmBuilding.sol";
 
 contract EmBuilding is EmBuildingContext, IEmBuilding {
 
-    constructor(address slotsAddress) EmBuildingContext(slotsAddress) {
-        
-    }
+    constructor(
+        address slotsAddress,
+        address techAddress
+    ) EmBuildingContext(slotsAddress, techAddress) {}
 
     function _setType(
         uint256 typeId,

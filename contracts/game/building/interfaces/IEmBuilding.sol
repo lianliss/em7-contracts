@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {ResourceProgression, Progression} from "../../structs.sol";
+import {ResourceProgression, Progression} from "../../lib/structs.sol";
 
 struct BuildRequirements {
     ResourceProgression[] resources;
     Progression.ProgressionParams time;
-    uint256 userLevel;
+    uint256[] levelTech;
 }
 
 struct BuildingType {
@@ -16,8 +16,15 @@ struct BuildingType {
     uint256 minLevel;
     uint256 maxLevel;
     bool disabled;
+    uint8[2] size;
     uint256[] slots;
     BuildRequirements construction;
+}
+
+struct Building {
+    uint256 index;
+    uint256 typeId;
+    uint256 constructedAt;
 }
 
 interface IEmBuilding {
