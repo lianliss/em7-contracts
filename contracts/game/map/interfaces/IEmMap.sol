@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Coords} from "../../lib/coords.sol";
 import {Progression} from "../../../utils/Progression.sol";
-import {Object} from "./struct.sol";
+import {Object} from "./structs.sol";
 import {IEmMapExternal} from "./IEmMapExternal.sol";
 
 interface IEmMap is IEmMapExternal {
