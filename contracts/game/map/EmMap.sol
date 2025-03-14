@@ -102,7 +102,7 @@ contract EmMap is EmMapContext, IEmMap {
         address user = _msgSender();
         uint256 price = _price.get(_paidAreas[user]++);
         IEmResource money = _money();
-        money.burn(user, price);
+        if (price > 0) money.burn(user, price);
         _claimArea(user, x, y);
         emit AreaPaid(user, x, y, address(money), price);
     }
@@ -110,7 +110,7 @@ contract EmMap is EmMapContext, IEmMap {
     function claimAreaStars(uint256 x, uint256 y) public {
         address user = _msgSender();
         uint256 price = _price.get(_starsPaidAreas[user]++);
-        _stars.spend(user, price);
+        if (price > 0) _stars.spend(user, price);
         _claimArea(user, x, y);
         emit AreaPaid(user, x, y, address(_stars), price);
     }
@@ -184,15 +184,25 @@ contract EmMap is EmMapContext, IEmMap {
         return IEmResource(_res.addressAt(MONEY_RES_ID));
     }
 
+    function _requireBorderingArea(address user, uint256 x, uint256 y) internal view {
+        if (x == 0 && y == 0) return;
+        if (x != 0 && _isClaimed(user, x - Coords.AREA_SIZE, y)) return;
+        if (x != y && _isClaimed(user, x, y - Coords.AREA_SIZE)) return;
+        if (_isClaimed(user, x + Coords.AREA_SIZE, y)) return;
+        if (_isClaimed(user, x, y + Coords.AREA_SIZE)) return;
+        require(false, "Claimed bordering area required");
+    }
+
     function _claimArea(address user, uint256 x, uint256 y) internal {
         Coords.Point memory origin = Coords.Point(x, y).area();
+        _requireBorderingArea(user, origin.x, origin.y);
         bytes32 hash = origin.hash();
         if (_claimedHashes[user].contains(hash)) {
             revert AreaAlreadyClaimed(x,y);
         }
         _claimedHashes[user].add(hash);
         _claimedAreas[user][hash] = origin;
-        emit AreaClaimed(user, x, y);
+        emit AreaClaimed(user, origin.x, origin.y);
     }
 
     function _isClaimed(address user, uint256 x, uint256 y) internal view returns(bool) {
