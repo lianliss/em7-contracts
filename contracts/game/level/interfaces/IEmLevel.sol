@@ -23,7 +23,7 @@ interface IEmLevel {
     function levelOf(address user) external view returns (uint256);
     function getLevelRewards(uint256 level) external view returns (LevelReward[] memory);
     function getUserLevelRewards(address user, uint256 level) external view returns (LevelReward[] memory);
-    function getProgression() external view returns (Progression.ProgressionParams memory);
+    function getProgression() external view returns (Progression.Params memory);
     function claimReward(uint256 level, uint256 index) external;
     function claimLevelRewards(uint256 level) external;
     function raiseExp(address user, uint256 amount) external;

@@ -24,8 +24,7 @@ interface IEmTech {
     /// @param parentTech Parent technology index;
     error ParentTechRequired(uint256 parentTech);
 
-    function getCount() external view returns (uint256);
-    function getTree(uint256 offset, uint256 limit) external view returns (Tech[] memory);
+    function getTree(uint256 offset, uint256 limit) external view returns (Tech[] memory, uint256 count);
     function haveTech(address user, uint256 techIndex) external view returns (bool);
     function research(uint256 techIndex) external;
     function researchFor(address user, uint256 techIndex, bool force) external;

@@ -5,5 +5,5 @@ import {Progression} from "../../utils/Progression.sol";
 
 struct ResourceProgression {
     address resource;
-    Progression.ProgressionParams amount;
+    Progression.Params amount;
 }

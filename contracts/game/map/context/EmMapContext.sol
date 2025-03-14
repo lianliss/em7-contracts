@@ -18,8 +18,8 @@ abstract contract EmMapContext is Proxy {
     IEmStarsExternal internal immutable _stars;
     IEmResFactory internal immutable _res;
 
-    Progression.ProgressionParams internal _price;
-    Progression.ProgressionParams internal _starsPrice;
+    Progression.Params internal _price;
+    Progression.Params internal _starsPrice;
 
     mapping(address user => EnumerableSet.Bytes32Set) internal _claimedHashes;
     mapping(address user => mapping(bytes32 hash => Coords.Point)) internal _claimedAreas;

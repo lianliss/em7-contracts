@@ -9,7 +9,7 @@ import {MemoryQueue} from "../../utils/sequence/MemoryQueue.sol";
 
 contract EmLevel is AccessControl, IEmLevel {
 
-    using Progression for Progression.ProgressionParams;
+    using Progression for Progression.Params;
     using MemoryQueue for MemoryQueue.Queue;
 
     bytes32 public constant EDITOR_ROLE = keccak256("EDITOR_ROLE");
@@ -25,7 +25,7 @@ contract EmLevel is AccessControl, IEmLevel {
         )
     ) private _userRewardClaimed;
     
-    Progression.ProgressionParams private _progress;
+    Progression.Params private _progress;
     mapping (uint256 level => LevelReward[] rewards) private _levelRewards;
 
     constructor(address authAddress) {
@@ -66,7 +66,7 @@ contract EmLevel is AccessControl, IEmLevel {
         return _getLevelRewardsByIndexes(level, _getUnclaimedLevelRewardsIndexes(user, level));
     }
 
-    function getProgression() public view returns (Progression.ProgressionParams memory) {
+    function getProgression() public view returns (Progression.Params memory) {
         return _progress;
     }
 

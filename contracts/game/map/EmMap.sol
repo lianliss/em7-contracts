@@ -14,7 +14,7 @@ contract EmMap is EmMapContext, IEmMap {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using EnumerableSet for EnumerableSet.UintSet;
     using MemoryQueue for MemoryQueue.Queue;
-    using Progression for Progression.ProgressionParams;
+    using Progression for Progression.Params;
     using Coords for Coords.Point;
 
     constructor(address starsAddress, address resFactoryAddress)
@@ -23,38 +23,32 @@ contract EmMap is EmMapContext, IEmMap {
 
     /// Read methods
 
-    function getClaimedAreasLength(address user) public view returns (uint256) {
-        return _claimedHashes[user].length();
-    }
-
-    function getClaimedAreas(address user, uint256 offset, uint256 limit) public view returns (Coords.Point[] memory) {
-        if (offset >= _claimedHashes[user].length() || limit == 0) return new Coords.Point[](0);
-        uint256 length = _claimedHashes[user].length() - offset;
+    function getClaimedAreas(address user, uint256 offset, uint256 limit) public view returns (Coords.Point[] memory, uint256 count) {
+        count = _claimedHashes[user].length();
+        if (offset >= count || limit == 0) return (new Coords.Point[](0), count);
+        uint256 length = count - offset;
         if (limit < length) length = limit;
         Coords.Point[] memory data = new Coords.Point[](length);
         for (uint256 i; i < length; i++) {
             data[i] = _claimedAreas[user][_claimedHashes[user].at(offset + i)];
         }
-        return data;
+        return (data, count);
     }
 
     function getBuildingObject(address user, uint256 buildingIndex) public view returns (Object memory) {
         return _objects[user][_buildings[user][buildingIndex]];
     }
 
-    function getObjectsLength(address user) public view returns (uint256) {
-        return _objectsHashes[user].length();
-    }
-
-    function getObjects(address user, uint256 offset, uint256 limit) public view returns (Object[] memory) {
-        if (offset >= _objectsHashes[user].length() || limit == 0) return new Object[](0);
-        uint256 length = _objectsHashes[user].length() - offset;
+    function getObjects(address user, uint256 offset, uint256 limit) public view returns (Object[] memory, uint256 count) {
+        count = _objectsHashes[user].length();
+        if (offset >= count || limit == 0) return (new Object[](0), count);
+        uint256 length = count - offset;
         if (limit < length) length = limit;
         Object[] memory data = new Object[](length);
         for (uint256 i; i < length; i++) {
             data[i] = _objects[user][_objectsHashes[user].at(offset + i)];
         }
-        return data;
+        return (data, count);
     }
 
     function getTileObject(address user, uint256 x, uint256 y) public view returns (Object memory) {
@@ -128,12 +122,12 @@ contract EmMap is EmMapContext, IEmMap {
 
     /// Admin methods
 
-    function setClaimPrice(Progression.ProgressionParams calldata params) public onlyRole(EDITOR_ROLE) {
+    function setClaimPrice(Progression.Params calldata params) public onlyRole(EDITOR_ROLE) {
         _price = params;
         emit ClaimPriceSet(params);
     }
 
-    function setClaimStarsPrice(Progression.ProgressionParams calldata params) public onlyRole(EDITOR_ROLE) {
+    function setClaimStarsPrice(Progression.Params calldata params) public onlyRole(EDITOR_ROLE) {
         _starsPrice = params;
         emit ClaimStarsPriceSet(params);
     }

@@ -33,25 +33,20 @@ contract EmTech is AccessControl, IEmTech {
 
     /// Read methods
 
-    /// @notice Returns count of technologies;
-    /// @return Count of technoligies;
-    function getCount() public view returns (uint256) {
-        return _tech.length;
-    }
-
     /// @notice Returns technologies structures;
     /// @param offset Offset from the beginning;
     /// @param limit Maximum of technoligies to return;
-    /// @return Array of technologies;
-    function getTree(uint256 offset, uint256 limit) public view returns (Tech[] memory) {
-        if (offset >= _tech.length || limit == 0) return new Tech[](0);
-        uint256 length = _tech.length - offset;
+    /// @return Array of technologies and count;
+    function getTree(uint256 offset, uint256 limit) public view returns (Tech[] memory, uint256 count) {
+        count = _tech.length;
+        if (offset >= count || limit == 0) return (new Tech[](0), count);
+        uint256 length = count - offset;
         if (limit < length) length = limit;
         Tech[] memory data = new Tech[](length);
         for (uint256 i; i < length; i++) {
             data[i] = _tech[offset + i];
         }
-        return data;
+        return (data, count);
     }
 
     /// @notice Checks if user have researched a technology;
