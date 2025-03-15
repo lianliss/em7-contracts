@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Slot, Range, Parameter, ParameterMod} from "./structs.sol";
+import {Slot, Range, Parameter, ParameterMod, Item} from "./structs.sol";
+import {UserMod} from "../../../NFT/Equipment/interfaces/IEmEquipment.sol";
 
 interface IEmSlots {
+
+    error ParamNotExistsError(uint256 paramIndex);
+    error SlotOccupiedError(address tokenAddress, uint256 tokenId);
 
     event SlotAdded(uint256 slotIndex, string title, uint256 minLevel, bool independent);
     event SlotUpdated(uint256 slotIndex, string title, uint256 minLevel);
@@ -12,8 +16,10 @@ interface IEmSlots {
 
     event ParameterAdded(uint256 paramIndex, string title, Range.Values limits);
     event ParameterUpdated(uint256 paramIndex, string title, Range.Values limits);
-    event NFTWhitelisted(address nftAddress);
-    event NFTBlacklisted(address nftAddress);
+    event NFTWhitelisted(address tokenAddress);
+    event NFTBlacklisted(address tokenAddress);
+
+    event ItemEquiped(address indexed user, address indexed tokenAddress, uint256 indexed tokenId, uint256 slotId, UserMod[] params);
 
     function getSlots(uint256 offset, uint256 limit) external view returns (Slot[] memory, uint256 count);
     function getParams(uint256 offset, uint256 limit) external view returns (Parameter[] memory, uint256 count);

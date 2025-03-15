@@ -7,7 +7,7 @@ struct ResourceMod {
     bool isVolume;
 }
 
-struct ParamMod {
+struct UserMod {
     uint256 paramIndex;
     uint256 mod;
 }
@@ -20,7 +20,7 @@ struct EquipmentType {
     uint256 count;
     string tokenURI;
     string name;
-    ParamMod[] userMods;
+    UserMod[] userMods;
     ResourceMod[] buildingMods;
     ResourceMod[] borderingMods;
 }

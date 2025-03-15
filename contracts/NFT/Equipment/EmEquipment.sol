@@ -5,7 +5,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {IEmEquipment} from "./interfaces/IEmEquipment.sol";
 import {EmERC721, IERC165} from "../EmERC721/EmERC721.sol";
-import {ResourceMod, ParamMod, EquipmentType, Item, Collection} from "./interfaces/structs.sol";
+import {ResourceMod, UserMod, EquipmentType, Item, Collection} from "./interfaces/structs.sol";
 
 contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
 
@@ -142,7 +142,7 @@ contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
 
     function setTypeMods(
         uint256 typeId,
-        ParamMod[] calldata userMods,
+        UserMod[] calldata userMods,
         ResourceMod[] calldata buildingMods,
         ResourceMod[] calldata borderingMods
     ) public onlyRole(EDITOR_ROLE) {
@@ -189,6 +189,9 @@ contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
     }
 
     function burn(uint256 tokenId) external onlyRole(MOD_ROLE) {
+        if (_items[tokenId].locked) {
+            revert TokenLockedError(_lockers[tokenId]);
+        }
         address user = _requireOwned(tokenId);
         uint256 typeId = _items[tokenId].typeId;
         _burn(tokenId);
@@ -219,7 +222,7 @@ contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
         }
     }
 
-    function getUserMods(uint256 tokenId) external view returns (ParamMod[] memory) {
+    function getUserMods(uint256 tokenId) external view returns (UserMod[] memory) {
         _requireOwned(tokenId);
         return _types[_tokenTypes[tokenId]].userMods;
     }

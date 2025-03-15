@@ -24,3 +24,8 @@ struct ParameterMod {
     string title;
     uint256 value;
 }
+
+struct Item {
+    address tokenAddress;
+    uint256 tokenId;
+}

@@ -2,7 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {IEmERC721} from "../../EmERC721/interfaces/IEmERC721.sol";
-import {IEmEquipmentMod} from "./IEmEquipmentMod.sol";
 import "./structs.sol";
 
 interface IEmEquipment is IEmERC721 {
@@ -34,7 +33,7 @@ interface IEmEquipment is IEmERC721 {
 
     event TypeModsSet(
         uint256 indexed typeId,
-        ParamMod[] userMods,
+        UserMod[] userMods,
         ResourceMod[] buildingMods,
         ResourceMod[] borderingMods
     );
@@ -65,9 +64,18 @@ interface IEmEquipment is IEmERC721 {
     ) external;
     function setTypeMods(
         uint256 typeId,
-        ParamMod[] calldata userMods,
+        UserMod[] calldata userMods,
         ResourceMod[] calldata buildingMods,
         ResourceMod[] calldata borderingMods
     ) external;
+
+    function mint(address user, uint256 typeId) external;
+    function burn(uint256 tokenId) external;
+    function lock(uint256 tokenId) external;
+    function unlock(uint256 tokenId) external;
+    function getUserMods(uint256 tokenId) external view returns (UserMod[] memory);
+    function getBuildingMods(uint256 tokenId) external view returns (ResourceMod[] memory);
+    function getBorderingMods(uint256 tokenId) external view returns (ResourceMod[] memory);
+    function getSlot(uint256 tokenId) external view returns (uint256);
 
 }
