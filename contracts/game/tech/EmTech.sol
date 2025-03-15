@@ -5,29 +5,28 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IEmResFactory} from "../../token/EmResource/interfaces/IEmResFactory.sol";
 import {IEmResource} from "../../token/EmResource/interfaces/IEmResource.sol";
 import {IEmTech, Tech} from "./interfaces/IEmTech.sol";
-import {SCIENCE_RES_ID} from "../const.sol";
+import {IEmSlots} from "../slots/interfaces/IEmSlots.sol";
+import {SCIENCE_RES_ID, RESEARCH_PARAM_ID} from "../const.sol";
 import {PERCENT_PRECISION} from "../../core/const.sol";
-import {Modificator} from "../../utils/Modificator.sol";
 
 contract EmTech is AccessControl, IEmTech {
-
-    using Modificator for Modificator.Mod;
 
     bytes32 public constant EDITOR_ROLE = keccak256("EDITOR_ROLE");
     bytes32 public constant MOD_ROLE = keccak256("MOD_ROLE");
 
     IEmResFactory private immutable _res;
+    IEmSlots private immutable _slots;
     
     Tech[] private _tech;
-    mapping(address user => Modificator.Mod mod) private _mod;
     mapping(address user => mapping(uint256 techIndex => bool isResearched)) private _users;
 
-    constructor(address resFactoryAddress) {
+    constructor(address resFactoryAddress, address slotsAddress) {
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _grantRole(EDITOR_ROLE, _msgSender());
         _grantRole(MOD_ROLE, _msgSender());
 
         _res = IEmResFactory(resFactoryAddress);
+        _slots = IEmSlots(slotsAddress);
     }
 
 
@@ -65,10 +64,8 @@ contract EmTech is AccessControl, IEmTech {
     /// @dev Burns caller's science resource tokens;
     function research(uint256 techIndex) public {
         address user = _msgSender();
-        uint256 mod = _mod[user].get();
-        if (mod > PERCENT_PRECISION) mod = PERCENT_PRECISION;
-        uint256 price = _tech[techIndex].price;
-        price -= price * mod / PERCENT_PRECISION;
+        uint256 price = _tech[techIndex].price
+            * _slots.getMod(user, RESEARCH_PARAM_ID) / PERCENT_PRECISION;
         if (price > 0) {
             _science().burn(user, price);
             emit ScienceBurned(user, price);
@@ -83,20 +80,6 @@ contract EmTech is AccessControl, IEmTech {
     /// @param techIndex Technology index;
     function researchFor(address user, uint256 techIndex, bool force) public onlyRole(MOD_ROLE) {
         _research(user, techIndex, force);
-    }
-
-    /// @notice Sets user's science discount size
-    function setMod(address user, bytes32 sourceId, uint256 value) public onlyRole(MOD_ROLE) {
-        bytes32 modId = _getModId(sourceId);
-        _mod[user].add(modId, value);
-        emit ModSet(user, sourceId, value);
-    }
-
-    /// @notice Removes user's science discount
-    function unsetMod(address user, bytes32 sourceId) public onlyRole(MOD_ROLE) {
-        bytes32 modId = _getModId(sourceId);
-        _mod[user].remove(modId);
-        emit ModUnset(user, sourceId);
     }
 
 
@@ -156,10 +139,6 @@ contract EmTech is AccessControl, IEmTech {
 
     function _checkExists(uint256 techIndex) internal view {
         require(techIndex < _tech.length, "Tech is not exists");
-    }
-
-    function _getModId(bytes32 sourceId) internal view returns (bytes32) {
-        return keccak256(abi.encode(_msgSender(), sourceId));
     }
 
 }

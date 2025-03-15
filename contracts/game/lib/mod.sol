@@ -2,6 +2,8 @@
 pragma solidity ^0.8.24;
 
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {Range} from "../lib/structs.sol";
+import {PERCENT_PRECISION} from "../../core/const.sol";
 
 library Modificator {
 
@@ -25,17 +27,24 @@ library Modificator {
         if (stored.sources.contains(sourceId)) {
             return stored.values[sourceId];
         } else {
-            return 0;
+            return PERCENT_PRECISION;
         }
     }
 
-    function get(Mod storage stored) internal view returns (uint256) {
-        uint256 sum;
-        uint256 length = stored.sources.length();
-        for (uint256 i; i < length; i++) {
-            sum += stored.values[stored.sources.at(i)];
+    function get(Mod storage mod) internal view returns (uint256 value) {
+        value = PERCENT_PRECISION;
+        for (uint256 i; i < mod.sources.length(); i++) {
+            value = value * mod.values[mod.sources.at(i)] / PERCENT_PRECISION;
         }
-        return sum;
+    }
+
+    function get(Mod storage mod, Range.Values memory limits) internal view returns (uint256 value) {
+        value = get(mod);
+        if (limits.min > 0 && value < limits.min) {
+            value = limits.min;
+        } else if (limits.max > 0 && value > limits.max) {
+            value = limits.max;
+        }
     }
 
 }

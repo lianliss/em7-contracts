@@ -1,20 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {ERC165, IERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import {IEmERC721, NFTTokenType} from "./interfaces/IEmERC721.sol";
+import {IEmERC721, IERC721Metadata} from "./interfaces/IEmERC721.sol";
 import {EmERC721Context, EnumerableSet} from "./EmERC721Context.sol";
 
-abstract contract EmERC721 is EmERC721Context, IEmERC721 {
+abstract contract EmERC721 is EmERC721Context, ERC165, IEmERC721 {
 
     using EnumerableSet for EnumerableSet.UintSet;
-
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        _requireOwned(tokenId);
-
-        return _types[_tokenTypes[tokenId]].tokenURI;
-    }
 
     function balanceOf(address owner) public view returns (uint256) {
         if (owner == address(0)) {
@@ -204,6 +199,13 @@ abstract contract EmERC721 is EmERC721Context, IEmERC721 {
 
     function setApprovalForAll(address operator, bool approved) public {
         _setApprovalForAll(msg.sender, operator, approved);
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
+        return
+            interfaceId == type(IEmERC721).interfaceId ||
+            interfaceId == type(IERC721Metadata).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
 }
