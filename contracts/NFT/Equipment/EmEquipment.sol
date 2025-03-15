@@ -91,6 +91,7 @@ contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
 
     function addType(
         uint256 collectionId,
+        uint256 slotId,
         uint256 transferableAfter,
         string calldata imageURI,
         string calldata name
@@ -98,6 +99,7 @@ contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
         _requireCollectionExists(collectionId);
         uint256 typeId = _typesLength++;
         _types[typeId].collectionId = collectionId;
+        _types[typeId].slotId = slotId;
         _types[typeId].transferableAfter = transferableAfter;
         _types[typeId].tokenURI = imageURI;
         _types[typeId].name = name;
@@ -105,6 +107,7 @@ contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
         emit TypeAdded(
             typeId,
             collectionId,
+            slotId,
             transferableAfter,
             imageURI,
             name
@@ -114,6 +117,7 @@ contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
     function updateType(
         uint256 typeId,
         uint256 collectionId,
+        uint256 slotId,
         uint256 transferableAfter,
         string calldata imageURI,
         string calldata name
@@ -121,6 +125,7 @@ contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
         _requireTypeExists(typeId);
         _requireCollectionExists(collectionId);
         _types[typeId].collectionId = collectionId;
+        _types[typeId].slotId = slotId;
         _types[typeId].transferableAfter = transferableAfter;
         _types[typeId].tokenURI = imageURI;
         _types[typeId].name = name;
@@ -128,6 +133,7 @@ contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
         emit TypeUpdated(
             typeId,
             collectionId,
+            slotId,
             transferableAfter,
             imageURI,
             name
@@ -226,6 +232,11 @@ contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
     function getBorderingMods(uint256 tokenId) external view returns (ResourceMod[] memory) {
         _requireOwned(tokenId);
         return _types[_tokenTypes[tokenId]].borderingMods;
+    }
+
+    function getSlot(uint256 tokenId) external view returns (uint256) {
+        _requireOwned(tokenId);
+        return _types[_tokenTypes[tokenId]].slotId;
     }
 
 

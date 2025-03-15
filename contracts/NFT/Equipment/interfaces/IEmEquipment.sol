@@ -17,6 +17,7 @@ interface IEmEquipment is IEmERC721 {
     event TypeAdded(
         uint256 indexed typeId,
         uint256 indexed collectionId,
+        uint256 indexed slotId,
         uint256 transferableAfter,
         string imageURI,
         string name
@@ -25,6 +26,7 @@ interface IEmEquipment is IEmERC721 {
     event TypeUpdated(
         uint256 indexed typeId,
         uint256 indexed collectionId,
+        uint256 indexed slotId,
         uint256 transferableAfter,
         string imageURI,
         string name
@@ -48,6 +50,7 @@ interface IEmEquipment is IEmERC721 {
     function updateCollection(uint256 collectionId, string calldata title) external;
     function addType(
         uint256 collectionId,
+        uint256 slotId,
         uint256 transferableAfter,
         string calldata imageURI,
         string calldata name
@@ -55,6 +58,7 @@ interface IEmEquipment is IEmERC721 {
     function updateType(
         uint256 typeId,
         uint256 collectionId,
+        uint256 slotId,
         uint256 transferableAfter,
         string calldata imageURI,
         string calldata name

@@ -15,6 +15,7 @@ struct ParamMod {
 struct EquipmentType {
     uint256 typeId;
     uint256 collectionId;
+    uint256 slotId;
     uint256 transferableAfter;
     uint256 count;
     string tokenURI;

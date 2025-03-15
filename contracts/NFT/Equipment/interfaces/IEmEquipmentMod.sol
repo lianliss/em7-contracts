@@ -12,5 +12,6 @@ interface IEmEquipmentMod {
     function getUserMods(uint256 tokenId) external view returns (ParamMod[] memory);
     function getBuildingMods(uint256 tokenId) external view returns (ResourceMod[] memory);
     function getBorderingMods(uint256 tokenId) external view returns (ResourceMod[] memory);
+    function getSlot(uint256 tokenId) external view returns (uint256);
 
 }
