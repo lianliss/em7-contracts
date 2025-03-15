@@ -46,6 +46,10 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
         return (data, count);
     }
 
+    function getBuilding(address user, uint256 buildingIndex) public view returns (Building memory) {
+        return _building[user][buildingIndex];
+    }
+
     /// Write methods
 
     function build(uint256 typeId, uint256 x, uint256 y) public {
@@ -146,6 +150,13 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
             _requireType(typeId);
             _build(user, typeId, x, y);
         }
+    }
+
+    function finishConstructionFor(bytes calldata input) external onlyRole(MOD_ROLE) {
+        (address user, uint256 x, uint256 y,) = abi.decode(input, (address, uint256, uint256, bytes));
+        uint256 buildingIndex = _map.getTileBuilding(user, x, y);
+        require(_building[user][buildingIndex].constructedAt < block.timestamp, "Building already constructed");
+        _building[user][buildingIndex].constructedAt = 1;
     }
 
     function getSpeedMod(address user, uint256 buildingIndex, address resource) public view returns (uint256) {
