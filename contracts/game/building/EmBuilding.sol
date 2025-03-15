@@ -2,13 +2,15 @@
 pragma solidity ^0.8.24;
 
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import {EmBuildingContext} from "./context/EmBuildingContext.sol";
+import {EmBuildingContext, Modificator, Item} from "./context/EmBuildingContext.sol";
 import {IEmSlots} from "../slots/interfaces/IEmSlots.sol";
 import {IEmResource} from "../../token/EmResource/interfaces/IEmResource.sol";
+import {IEmEquipment, ResourceMod} from "../../NFT/Equipment/interfaces/IEmEquipment.sol";
 import "./interfaces/IEmBuilding.sol";
 
 contract EmBuilding is EmBuildingContext, IEmBuilding {
 
+    using Modificator for Modificator.Mod;
     using EnumerableSet for EnumerableSet.UintSet;
     using Progression for Progression.Params;
 
@@ -63,6 +65,14 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
 
     function remove(uint256 buildingIndex) public {
         _remove(_msgSender(), buildingIndex);
+    }
+
+    function equip(address tokenAddress, uint256 tokenId, uint256 buildingIndex, uint256 slotId) public {
+        _equip(_msgSender(), tokenAddress, tokenId, buildingIndex, slotId);
+    }
+
+    function unequip(uint256 buildingIndex, uint256 slotId) public {
+        _unequip(_msgSender(), buildingIndex, slotId);
     }
 
 
@@ -138,6 +148,14 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
         }
     }
 
+    function getSpeedMod(address user, uint256 buildingIndex, address resource) public view returns (uint256) {
+        return _speedMod[user][buildingIndex][resource].get();
+    }
+
+    function getVolumeMod(address user, uint256 buildingIndex, address resource) public view returns (uint256) {
+        return _volumeMod[user][buildingIndex][resource].get();
+    }
+
 
     /// Internal methods
 
@@ -205,7 +223,7 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
             block.timestamp + _types[typeId].construction.time.get(0)
         );
         emit BuildingPlaced(user, _building[user][index]);
-        /// TODO insert bordering mods
+        _applyBuildingBorderingMods(user, index);
     }
 
     function _upgrade(address user, uint256 buildingIndex) internal {
@@ -221,6 +239,7 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
 
     function _remove(address user, uint256 buildingIndex) internal {
         _requireBuildingExists(user, buildingIndex);
+        _requireSlotsReleased(user, buildingIndex);
         Building storage building = _building[user][buildingIndex];
         BuildingType storage buildType = _types[building.typeId];
         /// Return resources
@@ -242,7 +261,134 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
         _indexes[user].remove(buildingIndex);
         delete _building[user][buildingIndex];
         emit BuildingRemoved(user, buildingIndex);
-        /// TODO remove bordering mods
+    }
+
+    function _getSourceId(address tokenAddress, uint256 tokenId) internal pure returns (bytes32) {
+        return keccak256(abi.encode(tokenAddress, tokenId));
+    }
+
+    function _requireOwnership(address user, address tokenAddress, uint256 tokenId) internal view {
+        IEmEquipment token = IEmEquipment(tokenAddress);
+        require(token.ownerOf(tokenId) == user, "Wrong token owner");
+    }
+
+    function _requireSlotsReleased(address user, uint256 buildingIndex) internal view {
+        uint256 typeId = _building[user][buildingIndex].typeId;
+        uint256[] memory slots = _types[typeId].slots;
+        for (uint256 i; i < slots.length; i++) {
+            if (_items[user][buildingIndex][slots[i]].tokenAddress != address(0)) {
+                revert("Building slots are not released");
+            }
+        }
+    }
+
+    function _setSpeedMod(address user, uint256 buildingIndex, address resource, bytes32 sourceId, uint256 value) internal {
+        _speedMod[user][buildingIndex][resource].add(sourceId, value);
+    }
+
+    function _setVolumeMod(address user, uint256 buildingIndex, address resource, bytes32 sourceId, uint256 value) internal {
+        _volumeMod[user][buildingIndex][resource].add(sourceId, value);
+    }
+
+    function _removeSpeedMod(address user, uint256 buildingIndex, address resource, bytes32 sourceId) internal {
+        _speedMod[user][buildingIndex][resource].remove(sourceId);
+    }
+
+    function _removeVolumeMod(address user, uint256 buildingIndex, address resource, bytes32 sourceId) internal {
+        _volumeMod[user][buildingIndex][resource].remove(sourceId);
+    }
+
+    function _applyBuildingParams(address user, uint256 buildingIndex, bytes32 sourceId, ResourceMod[] memory params) internal {
+        for (uint256 i; i < params.length; i++) {
+            if (params[i].isVolume) {
+                _setVolumeMod(user, buildingIndex, params[i].resource, sourceId, params[i].mod);
+            } else {
+                _setSpeedMod(user, buildingIndex, params[i].resource, sourceId, params[i].mod);
+            }
+        }
+    }
+
+    function _retractBuildingParams(address user, uint256 buildingIndex, bytes32 sourceId, ResourceMod[] memory params) internal {
+        for (uint256 i; i < params.length; i++) {
+            if (params[i].isVolume) {
+                _removeVolumeMod(user, buildingIndex, params[i].resource, sourceId);
+            } else {
+                _removeSpeedMod(user, buildingIndex, params[i].resource, sourceId);
+            }
+        }
+    }
+
+    function _applyBuildingBorderingMods(address user, uint256 buildingIndex) internal {
+        uint256[] memory buildings = _map.getBorderingBuildings(user, buildingIndex);
+        for (uint256 b; b < buildings.length; b++) {
+            uint256 typeId = _building[user][buildingIndex].typeId;
+            uint256[] memory slots = _types[typeId].slots;
+            for (uint256 i; i < slots.length; i++) {
+                Item storage item = _items[user][buildingIndex][slots[i]];
+                if (item.tokenAddress != address(0)) {
+                    IEmEquipment token = IEmEquipment(item.tokenAddress);
+                    bytes32 sourceId = _getSourceId(item.tokenAddress, item.tokenId);
+                    ResourceMod[] memory params = token.getBorderingMods(item.tokenId);
+                    _applyBuildingParams(user, buildingIndex, sourceId, params);
+                }
+            }
+        }
+    }
+
+    function _equip(address user, address tokenAddress, uint256 tokenId, uint256 buildingIndex, uint256 slotId) internal {
+        _requireOwnership(user, tokenAddress, tokenId);
+        Item storage item = _items[user][buildingIndex][slotId];
+        if (item.tokenAddress != address(0)) {
+            revert SlotOccupiedError(item.tokenAddress, item.tokenId);
+        }
+
+        IEmEquipment token = IEmEquipment(tokenAddress);
+        bytes32 sourceId = _getSourceId(tokenAddress, tokenId);
+        /// Lock token in slot
+        token.lock(tokenId);
+        /// Apply params mods
+        {
+            ResourceMod[] memory params = token.getBuildingMods(tokenId);
+            _applyBuildingParams(user, buildingIndex, sourceId, params);
+        }
+        /// Apply mods to bordering buildings
+        {
+            ResourceMod[] memory params = token.getBorderingMods(tokenId);
+            uint256[] memory buildings = _map.getBorderingBuildings(user, buildingIndex);
+            for (uint256 i; i < buildings.length; i++) {
+                _applyBuildingParams(user, buildings[i], sourceId, params);
+            }
+        }
+        /// Set slot oppupied
+        item.tokenAddress = tokenAddress;
+        item.tokenId = tokenId;
+        emit ItemEquiped(user, tokenAddress, tokenId, buildingIndex, slotId);
+    }
+
+    function _unequip(address user, uint256 buildingIndex, uint256 slotId) internal {
+        Item storage item = _items[user][buildingIndex][slotId];
+        require(item.tokenAddress != address(0), "Slot is empty");
+
+        IEmEquipment token = IEmEquipment(item.tokenAddress);
+        bytes32 sourceId = _getSourceId(item.tokenAddress, item.tokenId);
+        /// Unlock token
+        token.unlock(item.tokenId);
+        /// Retract params mods
+        {
+            ResourceMod[] memory params = token.getBuildingMods(item.tokenId);
+            _retractBuildingParams(user, buildingIndex, sourceId, params);
+        }
+        /// Retract mods to bordering buildings
+        {
+            ResourceMod[] memory params = token.getBorderingMods(item.tokenId);
+            uint256[] memory buildings = _map.getBorderingBuildings(user, buildingIndex);
+            for (uint256 i; i < buildings.length; i++) {
+                _retractBuildingParams(user, buildings[i], sourceId, params);
+            }
+        }
+        emit ItemUnequiped(user, item.tokenAddress, item.tokenId, buildingIndex, slotId);
+        /// Release slot
+        delete _items[user][buildingIndex][slotId];
     }
 
 }

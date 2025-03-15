@@ -209,11 +209,11 @@ contract EmSlots is AccessControl, IEmSlots {
             revert SlotOccupiedError(_items[user][slotId].tokenAddress, _items[user][slotId].tokenId);
         }
 
-        bytes32 sourceId = _getSourceId(tokenAddress, tokenId);
         IEmEquipment token = IEmEquipment(tokenAddress);
         /// Lock token in slot
         token.lock(tokenId);
         /// Apply params mods
+        bytes32 sourceId = _getSourceId(tokenAddress, tokenId);
         UserMod[] memory params = token.getUserMods(tokenId);
         for (uint256 i; i < params.length; i++) {
             _requireParamExists(params[i].paramIndex);
@@ -228,13 +228,13 @@ contract EmSlots is AccessControl, IEmSlots {
     function _unequip(address user, uint256 slotId) internal {
         address tokenAddress = _items[user][slotId].tokenAddress;
         uint256 tokenId = _items[user][slotId].tokenId;
-        require(_items[user][slotId].tokenAddress != address(0), "Slot is empty");
+        require(tokenAddress != address(0), "Slot is empty");
 
-        bytes32 sourceId = _getSourceId(tokenAddress, tokenId);
         IEmEquipment token = IEmEquipment(tokenAddress);
         /// Unlock token
         token.unlock(tokenId);
-        /// Unset params mods
+        /// Retract params mods
+        bytes32 sourceId = _getSourceId(tokenAddress, tokenId);
         UserMod[] memory params = token.getUserMods(tokenId);
         for (uint256 i; i < params.length; i++) {
             _requireParamExists(params[i].paramIndex);
@@ -242,7 +242,7 @@ contract EmSlots is AccessControl, IEmSlots {
         }
         /// Release slot
         delete _items[user][slotId];
-        emit ItemEquiped(user, tokenAddress, tokenId, slotId, params);
+        emit ItemUnequiped(user, tokenAddress, tokenId, slotId, params);
     }
 
 }

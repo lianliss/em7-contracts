@@ -33,6 +33,7 @@ interface IEmBuilding {
 
     error TechNotResearched(uint256 techIndex);
     error BuildingTypeCountLimit(uint256 limit);
+    error SlotOccupiedError(address tokenAddress, uint256 tokenId);
 
     event ReturnDeviderSet(uint256 devider);
     event BuildingTypeSet(uint256 indexed typeId, address indexed functionality, string title, uint256 minLevel, uint256 maxLevel);
@@ -44,6 +45,9 @@ interface IEmBuilding {
     event BuildingPlaced(address indexed user, Building building);
     event BuildingUpgraded(address indexed user, Building building);
     event BuildingRemoved(address indexed user, uint256 buildingIndex);
+
+    event ItemEquiped(address indexed user, address tokenAddress, uint256 tokenId, uint256 buildingIndex, uint256 slotId);
+    event ItemUnequiped(address indexed user, address tokenAddress, uint256 tokenId, uint256 buildingIndex, uint256 slotId);
 
     function getTypes(uint256 offset, uint256 limit) external view returns (BuildingType[] memory, uint256 count);
     function getBuildings(address user, uint256 offset, uint256 limit) external view returns (Building[] memory, uint256 count);
@@ -70,5 +74,11 @@ interface IEmBuilding {
     function disableType(uint256 typeId) external;
     function enableType(uint256 typeId) external;
     function buildFor(bytes calldata input) external;
+
+    function equip(address tokenAddress, uint256 tokenId, uint256 buildingIndex, uint256 slotId) external;
+    function unequip(uint256 buildingIndex, uint256 slotId) external;
+    function getSpeedMod(address user, uint256 buildingIndex, address resource) external view returns (uint256);
+    function getVolumeMod(address user, uint256 buildingIndex, address resource) external view returns (uint256);
+
 
 }

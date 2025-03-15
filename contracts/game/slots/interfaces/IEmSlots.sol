@@ -20,6 +20,7 @@ interface IEmSlots {
     event NFTBlacklisted(address tokenAddress);
 
     event ItemEquiped(address indexed user, address indexed tokenAddress, uint256 indexed tokenId, uint256 slotId, UserMod[] params);
+    event ItemUnequiped(address indexed user, address indexed tokenAddress, uint256 indexed tokenId, uint256 slotId, UserMod[] params);
 
     function getSlots(uint256 offset, uint256 limit) external view returns (Slot[] memory, uint256 count);
     function getParams(uint256 offset, uint256 limit) external view returns (Parameter[] memory, uint256 count);

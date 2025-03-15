@@ -7,6 +7,8 @@ import {IEmSlots} from "../../slots/interfaces/IEmSlots.sol";
 import {IEmTech} from "../../tech/interfaces/IEmTech.sol";
 import {IEmMapExternal} from "../../map/interfaces/IEmMapExternal.sol";
 import {BuildingType, Building} from "../interfaces/IEmBuilding.sol";
+import {Modificator} from "../../lib/mod.sol";
+import {Item} from "../../slots/interfaces/structs.sol";
 
 abstract contract EmBuildingContext is Proxy {
 
@@ -25,6 +27,16 @@ abstract contract EmBuildingContext is Proxy {
     mapping(address user => EnumerableSet.UintSet) internal _indexes;
     mapping(address user => uint256 buildingIndex) internal _counter;
     mapping(address user => mapping(uint256 typeId => uint256 count)) internal _count;
+
+    mapping(address user =>
+        mapping(uint256 buildingIndex => 
+            mapping(address resource => Modificator.Mod mod))) internal _speedMod;
+    mapping(address user =>
+        mapping(uint256 buildingIndex => 
+            mapping(address resource => Modificator.Mod mod))) internal _volumeMod;
+    mapping(address user =>
+        mapping(uint256 buildingIndex =>
+            mapping(uint256 slotId => Item item))) internal _items;
 
     constructor(
         address slotsAddress,
