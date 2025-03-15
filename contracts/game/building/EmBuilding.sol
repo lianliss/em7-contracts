@@ -49,6 +49,7 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
     function getBuilding(address user, uint256 buildingIndex) public view returns (Building memory) {
         return _building[user][buildingIndex];
     }
+    
 
     /// Write methods
 
@@ -77,61 +78,6 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
 
     function unequip(uint256 buildingIndex, uint256 slotId) public {
         _unequip(_msgSender(), buildingIndex, slotId);
-    }
-
-
-    /// Editor methods
-
-    function setReturnDevider(uint256 devider) public onlyRole(EDITOR_ROLE) {
-        require(devider > 0, "Devider can't be zero");
-        _returnDevider = devider;
-        emit ReturnDeviderSet(devider);
-    }
-
-    function addType(
-        string calldata title,
-        address functionalityAddress,
-        uint256 minLevel,
-        uint256 maxLevel
-    ) public onlyRole(EDITOR_ROLE) {
-        uint256 typeId = _typesLength++;
-        _types[typeId].typeId = typeId;
-        _setType(typeId, title, functionalityAddress, minLevel, maxLevel);
-    }
-
-    function updateType(
-        uint256 typeId,
-        string calldata title,
-        address functionalityAddress,
-        uint256 minLevel,
-        uint256 maxLevel
-    ) public onlyRole(EDITOR_ROLE) {
-        _requireTypeExists(typeId);
-        _setType(typeId, title, functionalityAddress, minLevel, maxLevel);
-    }
-
-    function setTypeSlots(uint256 typeId, uint256[] calldata slots) public onlyRole(EDITOR_ROLE) {
-        _requireTypeExists(typeId);
-        _types[typeId].slots = slots;
-        emit BuildingTypeSlotsSet(typeId, slots);
-    }
-
-    function setBuildingRequirements(uint256 typeId, BuildRequirements calldata requirements) public onlyRole(EDITOR_ROLE) {
-        _requireTypeExists(typeId);
-        _types[typeId].construction = requirements;
-        emit BuildingRequirementsSet(typeId, requirements);
-    }
-
-    function disableType(uint256 typeId) public onlyRole(EDITOR_ROLE) {
-        _requireTypeExists(typeId);
-        _types[typeId].disabled = true;
-        emit BuildingTypeDisabled(typeId);
-    }
-
-    function enableType(uint256 typeId) public onlyRole(EDITOR_ROLE) {
-        _requireTypeExists(typeId);
-        _types[typeId].disabled = false;
-        emit BuildingTypeEnabled(typeId);
     }
 
 
