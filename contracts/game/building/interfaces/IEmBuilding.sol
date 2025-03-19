@@ -9,6 +9,7 @@ interface IEmBuilding is IEmBuildingEvents {
 
     function getTypes(uint256 offset, uint256 limit) external view returns (BuildingType[] memory, uint256 count);
     function getBuildings(address user, uint256 offset, uint256 limit) external view returns (Building[] memory, uint256 count);
+    function getBuilding(address user, uint256 buildingIndex) external view returns (Building memory);
     function build(uint256 typeId, uint256 x, uint256 y) external;
     function upgrade(uint256 buildingIndex) external;
     function remove(uint256 buildingIndex) external;
