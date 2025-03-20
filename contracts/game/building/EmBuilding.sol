@@ -11,7 +11,9 @@ import {DEMOLISH_PARAM_ID} from "../const.sol";
 import {PERCENT_PRECISION} from "../../core/const.sol";
 import "./interfaces/IEmBuilding.sol";
 
+/// @notice Upgradable building with a slots;
 /// @dev Require EmMap BUILDER_ROLE;
+/// @dev Require EmEquipment MOD_ROLE;
 /// @dev Require EmResFactory MINTER_ROLE;
 /// @dev Require EmResFactory BURNER_ROLE;
 /// @dev Require each functionality CLAIMER_ROLE;
@@ -30,6 +32,11 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
 
     /// Read methods
 
+    /// @notice Returns buildings types;
+    /// @param offset Offset from the beginning;
+    /// @param limit Return array length limit;
+    /// @return Array of buildings types;
+    /// @return count Total amount of buildings types;
     function getTypes(uint256 offset, uint256 limit) public view returns (BuildingType[] memory, uint256 count) {
         if (offset >= _typesLength || limit == 0) return (new BuildingType[](0), _typesLength);
         uint256 length = _typesLength - offset;
@@ -41,6 +48,12 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
         return (data, _typesLength);
     }
 
+    /// @notice Returns buildings types;
+    /// @param user Account address;
+    /// @param offset Offset from the beginning;
+    /// @param limit Return array length limit;
+    /// @return Array of user buildings;
+    /// @return count Total amount of user buildings;
     function getBuildings(address user, uint256 offset, uint256 limit) public view returns (Building[] memory, uint256 count) {
         count = _indexes[user].length();
         if (offset >= count || limit == 0) return (new Building[](0), count);
@@ -53,6 +66,10 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
         return (data, count);
     }
 
+    /// @notice Returns user single building;
+    /// @param user Account address;
+    /// @param buildingIndex Building index;
+    /// @return Building data;
     function getBuilding(address user, uint256 buildingIndex) public view returns (Building memory) {
         return _building[user][buildingIndex];
     }
@@ -60,6 +77,10 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
 
     /// Write methods
 
+    /// @notice Build a building in the coordinates;
+    /// @param typeId Building type index;
+    /// @param x Horizontal coordinate;
+    /// @param y Vertical ccordinate;
     function build(uint256 typeId, uint256 x, uint256 y) public {
         _requireType(typeId);
         address user = _msgSender();
@@ -67,6 +88,8 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
         _build(user, typeId, x, y);
     }
 
+    /// @notice Upgrades the building;
+    /// @param buildingIndex Building index;
     function upgrade(uint256 buildingIndex) public {
         address user = _msgSender();
         _requireBuildingExists(user, buildingIndex);
@@ -75,14 +98,26 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
         _upgrade(user, buildingIndex);
     }
 
+    /// @notice Removes the building;
+    /// @param buildingIndex Building index;
     function remove(uint256 buildingIndex) public {
         _remove(_msgSender(), buildingIndex);
     }
 
+    /// @notice Equipes an NFT to a building slot;
+    /// @param tokenAddress NFT address;
+    /// @param tokenId NFT identificator;
+    /// @param buildingIndex Building index with available slot;
+    /// @param slotId Slot index of the building;
+    /// @dev It will try to claim resources before the equip;
     function equip(address tokenAddress, uint256 tokenId, uint256 buildingIndex, uint256 slotId) public {
         _equip(_msgSender(), tokenAddress, tokenId, buildingIndex, slotId);
     }
 
+    /// @notice Unequips the NFT from the building slot;
+    /// @param buildingIndex Building index;
+    /// @param slotId Slot index of the building;
+    /// @dev It will try to claim resources before the unequip;
     function unequip(uint256 buildingIndex, uint256 slotId) public {
         _unequip(_msgSender(), buildingIndex, slotId);
     }
@@ -90,6 +125,8 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
 
     /// External methods
 
+    /// @notice Build a building for user
+    /// @param input Encoded data with user address, coordinates and building type index in bytes encoded extra data;
     function buildFor(bytes calldata input) external onlyRole(MOD_ROLE) {
         (address user, uint256 x, uint256 y, bytes memory extra) = abi.decode(input, (address, uint256, uint256, bytes));
         uint256 buildingIndex = _map.getTileBuilding(user, x, y);
@@ -105,6 +142,8 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
         }
     }
 
+    /// @notice Finishes the construction in the building;
+    /// @param input Encoded data with user address, coordinates;
     function finishConstructionFor(bytes calldata input) external onlyRole(MOD_ROLE) {
         (address user, uint256 x, uint256 y,) = abi.decode(input, (address, uint256, uint256, bytes));
         uint256 buildingIndex = _map.getTileBuilding(user, x, y);
@@ -112,10 +151,20 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
         _building[user][buildingIndex].constructedAt = 1;
     }
 
+    /// @notice Returns mining speed modificator of the building;
+    /// @param user Account address;
+    /// @param buildingIndex Building index;
+    /// @param resource Resource address;
+    /// @return Resource mining speed modificator;
     function getSpeedMod(address user, uint256 buildingIndex, address resource) public view returns (uint256) {
         return _speedMod[user][buildingIndex][resource].get();
     }
 
+    /// @notice Returns storage volume modificator of the building;
+    /// @param user Account address;
+    /// @param buildingIndex Building index;
+    /// @param resource Resource address;
+    /// @return Resource storage volume modificator;
     function getVolumeMod(address user, uint256 buildingIndex, address resource) public view returns (uint256) {
         return _volumeMod[user][buildingIndex][resource].get();
     }
