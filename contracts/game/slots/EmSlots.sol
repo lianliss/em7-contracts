@@ -37,6 +37,7 @@ contract EmSlots is AccessControl, IEmSlots {
 
         _level = IEmLevel(levelAddress);
         _addParameter("Research", Range.Values(PERCENT_PRECISION / 2, PERCENT_PRECISION));
+        _addParameter("Demolish return", Range.Values(PERCENT_PRECISION, PERCENT_PRECISION * 2));
     }
 
     function addSlot(string calldata title, uint256 minLevel, bool independent) public onlyRole(EDITOR_ROLE) {

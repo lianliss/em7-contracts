@@ -7,6 +7,8 @@ import {IEmSlots} from "../slots/interfaces/IEmSlots.sol";
 import {IEmResource} from "../../token/EmResource/interfaces/IEmResource.sol";
 import {IEmEquipment, ResourceMod} from "../../NFT/Equipment/interfaces/IEmEquipment.sol";
 import {IEmClaimer} from "./interfaces/IEmClaimer.sol";
+import {DEMOLISH_PARAM_ID} from "../const.sol";
+import {PERCENT_PRECISION} from "../../core/const.sol";
 import "./interfaces/IEmBuilding.sol";
 
 /// @dev Require EmMap BUILDER_ROLE;
@@ -21,8 +23,9 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
 
     constructor(
         address techAddress,
-        address mapAddress
-    ) EmBuildingContext(techAddress, mapAddress) {}
+        address mapAddress,
+        address slotsAddress
+    ) EmBuildingContext(techAddress, mapAddress, slotsAddress) {}
 
 
     /// Read methods
@@ -193,6 +196,7 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
         BuildingType storage buildType = _types[building.typeId];
         require(building.level < buildType.maxLevel, "Maximum building level reached");
         _requireTech(user, building.typeId, building.level + 1);
+        _claimBuilding(user, buildingIndex);
         building.level++;
         building.constructedAt = block.timestamp + buildType.construction.time.get(building.level);
         emit BuildingUpgraded(user, building);
@@ -203,6 +207,8 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
         _requireSlotsReleased(user, buildingIndex);
         Building storage building = _building[user][buildingIndex];
         BuildingType storage buildType = _types[building.typeId];
+        /// Claim
+        _claimBuilding(user, buildingIndex);
         /// Return resources
         ResourceProgression[] storage res = buildType.construction.resources;
         uint256[] memory toReturn = new uint256[](res.length);
@@ -213,7 +219,7 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
         }
         for (uint256 r; r < res.length; r++) {
             uint256 amount = toReturn[r] / _returnDevider;
-            /// TODO add mod
+            amount = amount * _slots.getMod(user, DEMOLISH_PARAM_ID) / PERCENT_PRECISION;
             IEmResource(res[r].resource).mint(user, amount);
         }
         /// Remove from map

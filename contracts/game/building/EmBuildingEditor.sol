@@ -6,14 +6,15 @@ import {ProxyImplementation} from "../../Proxy/ProxyImplementation.sol";
 import {IEmBuildingEditor} from "./interfaces/IEmBuildingEditor.sol";
 import {BuildRequirements, ResourceProgression, Progression} from "./interfaces/structs.sol";
 
+/// @dev Require EmBuilding PROXY_ROLE
 contract EmBuildingEditor is EmBuildingContext, ProxyImplementation, IEmBuildingEditor {
 
     constructor(
-        address slotsAddress,
         address techAddress,
         address mapAddress,
+        address slotsAddress,
         address buildingAddress
-    ) EmBuildingContext(slotsAddress, techAddress, mapAddress) ProxyImplementation(buildingAddress) {}
+    ) EmBuildingContext(techAddress, mapAddress, slotsAddress) ProxyImplementation(buildingAddress) {}
 
     function _setReturnDevider(bytes memory encoded) internal {
         (bool isProxy,) = routedDelegate("xSetReturnDevider(bytes)", encoded);
