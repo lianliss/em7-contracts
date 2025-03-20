@@ -2,12 +2,9 @@
 pragma solidity ^0.8.24;
 
 import {BuildRequirements, Building} from "./structs.sol";
+import {IEmErrors} from "../../errors.sol";
 
-interface IEmBuildingEvents {
-
-    error TechNotResearched(uint256 techIndex);
-    error BuildingTypeCountLimit(uint256 limit);
-    error SlotOccupiedError(address tokenAddress, uint256 tokenId);
+interface IEmBuildingEvents is IEmErrors {
 
     event ReturnDeviderSet(uint256 devider);
     event BuildingTypeSet(uint256 indexed typeId, address indexed functionality, string title, uint256 minLevel, uint256 maxLevel);

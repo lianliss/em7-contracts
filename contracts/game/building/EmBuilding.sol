@@ -6,8 +6,13 @@ import {EmBuildingContext, Modificator, Item} from "./context/EmBuildingContext.
 import {IEmSlots} from "../slots/interfaces/IEmSlots.sol";
 import {IEmResource} from "../../token/EmResource/interfaces/IEmResource.sol";
 import {IEmEquipment, ResourceMod} from "../../NFT/Equipment/interfaces/IEmEquipment.sol";
+import {IEmClaimer} from "./interfaces/IEmClaimer.sol";
 import "./interfaces/IEmBuilding.sol";
 
+/// @dev Require EmMap BUILDER_ROLE;
+/// @dev Require EmResFactory MINTER_ROLE;
+/// @dev Require EmResFactory BURNER_ROLE;
+/// @dev Require each functionality CLAIMER_ROLE;
 contract EmBuilding is EmBuildingContext, IEmBuilding {
 
     using Modificator for Modificator.Mod;
@@ -15,10 +20,9 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
     using Progression for Progression.Params;
 
     constructor(
-        address slotsAddress,
         address techAddress,
         address mapAddress
-    ) EmBuildingContext(slotsAddress, techAddress, mapAddress) {}
+    ) EmBuildingContext(techAddress, mapAddress) {}
 
 
     /// Read methods
@@ -255,7 +259,13 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
         _volumeMod[user][buildingIndex][resource].remove(sourceId);
     }
 
+    function _claimBuilding(address user, uint256 buildingIndex) internal {
+        uint256 typeId = _building[user][buildingIndex].typeId;
+        try IEmClaimer(_types[typeId].functionality).claimFor(user, buildingIndex) {} catch {}
+    }
+
     function _applyBuildingParams(address user, uint256 buildingIndex, bytes32 sourceId, ResourceMod[] memory params) internal {
+        _claimBuilding(user, buildingIndex);
         for (uint256 i; i < params.length; i++) {
             if (params[i].isVolume) {
                 _setVolumeMod(user, buildingIndex, params[i].resource, sourceId, params[i].mod);
@@ -266,6 +276,7 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
     }
 
     function _retractBuildingParams(address user, uint256 buildingIndex, bytes32 sourceId, ResourceMod[] memory params) internal {
+        _claimBuilding(user, buildingIndex);
         for (uint256 i; i < params.length; i++) {
             if (params[i].isVolume) {
                 _removeVolumeMod(user, buildingIndex, params[i].resource, sourceId);
