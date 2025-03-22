@@ -188,7 +188,7 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
     function _requireNoConsumers(address user, Building storage building) internal view {
         try IEmPipe(_types[building.typeId].functionality).getConsumers(user, building.index) returns (address[] memory consumers) {
             for (uint256 i; i < consumers.length; i++) {
-                if (consumers[i] == address(0)) {
+                if (consumers[i] != address(0)) {
                     revert HaveConsumersError(uint8(i), consumers[i]);
                 }
             }
