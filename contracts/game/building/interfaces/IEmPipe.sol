@@ -11,7 +11,7 @@ interface IEmPipe is IEmErrors {
     event PipeLocked(address indexed user, uint256 indexed buildingIndex, uint8 indexed pipeIndex, address consumer);
     event PipeUnlocked(address indexed user, uint256 indexed buildingIndex, uint8 indexed pipeIndex, address consumer);
 
-    function getPipeOutput(address user, uint256 buildingIndex, uint8 pipeIndex) external returns (address consumer, address resource, uint256 amountPerSecond);
+    function getPipeOutput(address user, uint256 buildingIndex, uint8 pipeIndex) external view returns (address consumer, address resource, uint256 amountPerSecond);
     function getConsumers(address user, uint256 buildingIndex) external view returns (address[] memory);
     function lockPipe(address user, uint256 buildingIndex, uint8 pipeIndex) external;
     function unlockPipe(address user, uint256 buildingIndex, uint8 pipeIndex) external;

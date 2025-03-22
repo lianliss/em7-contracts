@@ -2,7 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import {ResourceProgression} from "../../lib/structs.sol";
 import {Progression} from "../../../utils/Progression.sol";
 import {IEmMine, MineType, Mine} from "../interfaces/IEmMine.sol";
 import {IEmResource} from "../../../token/EmResource/interfaces/IEmResource.sol";
@@ -19,8 +18,8 @@ contract EmMine is EmPipe, IEmMine {
 
     EnumerableSet.UintSet internal _types;
     mapping (uint256 typeId => address resource) internal _resource;
-    mapping (uint256 typeId => ResourceProgression amountPerSecond) internal _output;
-    mapping (uint256 typeId => ResourceProgression volume) internal _volume;
+    mapping (uint256 typeId => Progression.Params amountPerSecond) internal _output;
+    mapping (uint256 typeId => Progression.Params volume) internal _volume;
     mapping (address user => mapping(uint256 buildingIndex => uint256 timestamp)) internal _claimedAt;
 
     constructor(address buildingIndex, address techAddress) EmPipe(buildingIndex, techAddress) {
@@ -53,8 +52,8 @@ contract EmMine is EmPipe, IEmMine {
         _requireTypeExists(typeId);
         data.typeId = typeId;
         data.resource = _resource[typeId];
-        data.output = _output[typeId].amount;
-        data.volume = _volume[typeId].amount;
+        data.output = _output[typeId];
+        data.volume = _volume[typeId];
         data.pipes = _pipes[typeId];
     }
 
@@ -88,7 +87,7 @@ contract EmMine is EmPipe, IEmMine {
 
     /// Admin methods
     
-    function setTypeParams(uint256 typeId, address resourceAddress, ResourceProgression memory output, ResourceProgression memory volume) public onlyRole(EDITOR_ROLE) {
+    function setTypeParams(uint256 typeId, address resourceAddress, Progression.Params memory output, Progression.Params memory volume) public onlyRole(EDITOR_ROLE) {
         _types.add(typeId);
         _resource[typeId] = resourceAddress;
         _output[typeId] = output;
@@ -135,13 +134,13 @@ contract EmMine is EmPipe, IEmMine {
     }
 
     function _getOutput(address user, Building memory building) internal view returns (uint256) {
-        uint256 mod = _building.getSpeedMod(user, building.index, _output[building.typeId].resource);
-        return _output[building.typeId].amount.get(building.level) * mod / PERCENT_PRECISION;
+        uint256 mod = _building.getSpeedMod(user, building.index, _resource[building.typeId]);
+        return _output[building.typeId].get(building.level) * mod / PERCENT_PRECISION;
     }
 
     function _getVolume(address user, Building memory building) internal view returns (uint256) {
-        uint256 mod = _building.getVolumeMod(user, building.index, _output[building.typeId].resource);
-        return _volume[building.typeId].amount.get(building.level) * mod / PERCENT_PRECISION;
+        uint256 mod = _building.getVolumeMod(user, building.index, _resource[building.typeId]);
+        return _volume[building.typeId].get(building.level) * mod / PERCENT_PRECISION;
     }
 
     function _getMined(address user, Building memory building) internal view returns (uint256) {

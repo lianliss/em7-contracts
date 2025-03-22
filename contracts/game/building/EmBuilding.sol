@@ -7,6 +7,7 @@ import {IEmSlots} from "../slots/interfaces/IEmSlots.sol";
 import {IEmResource} from "../../token/EmResource/interfaces/IEmResource.sol";
 import {IEmEquipment, ResourceMod} from "../../NFT/Equipment/interfaces/IEmEquipment.sol";
 import {IEmClaimer} from "./interfaces/IEmClaimer.sol";
+import {IEmPipe} from "./interfaces/IEmPipe.sol";
 import {DEMOLISH_PARAM_ID} from "../const.sol";
 import {PERCENT_PRECISION} from "../../core/const.sol";
 import "./interfaces/IEmBuilding.sol";
@@ -184,6 +185,16 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
         require(_indexes[user].contains(buildingIndex), "Building is not exists");
     }
 
+    function _requireNoConsumers(address user, Building storage building) internal view {
+        try IEmPipe(_types[building.typeId].functionality).getConsumers(user, building.index) returns (address[] memory consumers) {
+            for (uint256 i; i < consumers.length; i++) {
+                if (consumers[i] != address(0)) {
+                    revert HaveConsumersError(uint8(i), consumers[i]);
+                }
+            }
+        } catch {}
+    }
+
     function _requireTech(address user, uint256 typeId, uint256 level) internal view {
         if (_types[typeId].construction.levelTech.length > level) {
             uint256 techIndex = _types[typeId].construction.levelTech[level];
@@ -255,6 +266,7 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
         _requireBuildingExists(user, buildingIndex);
         _requireSlotsReleased(user, buildingIndex);
         Building storage building = _building[user][buildingIndex];
+        _requireNoConsumers(user, building);
         BuildingType storage buildType = _types[building.typeId];
         /// Claim
         _claimBuilding(user, buildingIndex);

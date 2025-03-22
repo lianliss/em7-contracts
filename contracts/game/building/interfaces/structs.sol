@@ -28,3 +28,9 @@ struct Building {
     uint256 level;
     uint256 constructedAt;
 }
+
+struct InputPipe {
+    uint256 buildingIndex;
+    uint8 pipeIndex;
+    address functionality;
+}
