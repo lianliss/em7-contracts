@@ -74,6 +74,14 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
     function getBuilding(address user, uint256 buildingIndex) public view returns (Building memory) {
         return _building[user][buildingIndex];
     }
+
+    /// @notice Returns user building functionality address;
+    /// @param user Account address;
+    /// @param buildingIndex Building index;
+    /// @return Building functionality address;
+    function getBuildingFunctionality(address user, uint256 buildingIndex) public view returns (address) {
+        return _types[getBuilding(user, buildingIndex).typeId].functionality;
+    }
     
 
     /// Write methods
