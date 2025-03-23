@@ -2,28 +2,13 @@
 pragma solidity ^0.8.24;
 
 import {ResourceProgression} from "../../lib/structs.sol";
+import {Mine, MineType} from "./structs.sol";
 import {Progression} from "../../../utils/Progression.sol";
 import {IEmClaimer} from "./IEmClaimer.sol";
 
-struct MineType {
-    uint256 typeId;
-    address resource;
-    Progression.Params output;
-    Progression.Params volume;
-    Progression.Params pipes;
-}
-
-struct Mine {
-    uint256 index;
-    uint256 typeId;
-    uint256 claimedAt;
-    uint256 output;
-    uint256 volume;
-    address[] consumers;
-}
-
 interface IEmMine is IEmClaimer {
 
+    event Claimed(address indexed user, uint256 indexed buildingIndex, address indexed resource, uint256 amount);
     event TypeParamsSet(uint256 indexed typeId, address indexed resource, Progression.Params speed, Progression.Params volume);
     event TypeRemoved(uint256 indexed typeId);
 

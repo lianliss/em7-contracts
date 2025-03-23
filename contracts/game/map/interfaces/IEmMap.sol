@@ -5,9 +5,8 @@ import {Coords} from "../../lib/coords.sol";
 import {Progression} from "../../../utils/Progression.sol";
 import {Object} from "./structs.sol";
 import {IEmMapExternal} from "./IEmMapExternal.sol";
-import {IEmErrors} from "../../errors.sol";
 
-interface IEmMap is IEmErrors, IEmMapExternal {
+interface IEmMap is IEmMapExternal {
 
     event AreaClaimed(address indexed user, uint256 x, uint256 y);
     event AreaPaid(address indexed user, uint256 x, uint256 y, address token, uint256 price);

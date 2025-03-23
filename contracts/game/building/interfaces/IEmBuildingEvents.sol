@@ -2,9 +2,8 @@
 pragma solidity ^0.8.24;
 
 import {BuildRequirements, Building} from "./structs.sol";
-import {IEmErrors} from "../../errors.sol";
 
-interface IEmBuildingEvents is IEmErrors {
+interface IEmBuildingEvents {
 
     event ReturnDeviderSet(uint256 devider);
     event BuildingTypeSet(uint256 indexed typeId, address indexed functionality, string title, uint256 minLevel, uint256 maxLevel);

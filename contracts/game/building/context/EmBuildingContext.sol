@@ -48,17 +48,4 @@ abstract contract EmBuildingContext is Proxy {
         mapping(uint256 buildingIndex =>
             mapping(uint256 slotId => Item item))) internal _items;
 
-    constructor(
-        address techAddress,
-        address mapAddress,
-        address slotsAddress
-    ) Proxy() {
-        _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
-        _grantRole(EDITOR_ROLE, _msgSender());
-
-        _tech = IEmTech(techAddress);
-        _map = IEmMapExternal(mapAddress);
-        _slots = IEmSlots(slotsAddress);
-    }
-
 }

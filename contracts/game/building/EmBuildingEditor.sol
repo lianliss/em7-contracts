@@ -10,11 +10,8 @@ import {BuildRequirements, ResourceProgression, Progression} from "./interfaces/
 contract EmBuildingEditor is EmBuildingContext, ProxyImplementation, IEmBuildingEditor {
 
     constructor(
-        address techAddress,
-        address mapAddress,
-        address slotsAddress,
         address buildingAddress
-    ) EmBuildingContext(techAddress, mapAddress, slotsAddress) ProxyImplementation(buildingAddress) {}
+    ) ProxyImplementation(buildingAddress) {}
 
     function _setReturnDevider(bytes memory encoded) internal {
         (bool isProxy,) = routedDelegate("xSetReturnDevider(bytes)", encoded);

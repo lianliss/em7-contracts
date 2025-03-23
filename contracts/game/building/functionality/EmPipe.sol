@@ -1,34 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {EmPipeContext, Proxy} from "../context/EmPipeContext.sol";
 import {Progression} from "../../../utils/Progression.sol";
+import {EmPipeInternal} from "./EmPipeInternal.sol";
 import {IEmBuilding, Building} from "../interfaces/IEmBuilding.sol";
 import {IEmPipe} from "../interfaces/IEmPipe.sol";
 import {IEmTech} from "../../tech/interfaces/IEmTech.sol";
+import {Errors} from "../../errors.sol";
 
 /// @notice Pipe extention for building functionality;
 /// @dev Use in building functionality contract;
-abstract contract EmPipe is AccessControl, IEmPipe {
+abstract contract EmPipe is EmPipeContext, EmPipeInternal, IEmPipe {
 
     using Progression for Progression.Params;
 
-    bytes32 public constant EDITOR_ROLE = keccak256("EDITOR_ROLE");
-    bytes32 public constant CONSUMER_ROLE = keccak256("CONSUMER_ROLE");
-
-    IEmTech internal immutable _tech;
-    IEmBuilding internal immutable _building;
-
-    uint256 public techRequired;
-    /// Building type pipes amount progression
-    mapping(uint256 typeId => Progression.Params amount) internal _pipes;
-    /// Connected consumers
-    mapping(
-        address user => mapping(
-            uint256 buildingIndex => mapping(
-                uint8 pipeIndex => address consumer))) internal _consumers;
-
-    constructor(address buildingAddress, address techAddress) {
+    constructor(address buildingAddress, address techAddress) Proxy() {
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _grantRole(EDITOR_ROLE, _msgSender());
         _grantRole(CONSUMER_ROLE, _msgSender());
@@ -60,14 +47,14 @@ abstract contract EmPipe is AccessControl, IEmPipe {
     /// @dev CONSUMER_ROLE required;
     function lockPipe(address user, uint256 buildingIndex, uint8 pipeIndex) public virtual onlyRole(CONSUMER_ROLE) {
         if (techRequired == 0 || !_tech.haveTech(user, techRequired)) {
-            revert TechNotResearched(techRequired);
+            revert Errors.TechNotResearchedError(techRequired);
         }
         Building memory building = _building.getBuilding(user, buildingIndex);
         _requirePipeExists(building, pipeIndex);
         address consumer = _msgSender();
         address current = _consumers[user][building.index][pipeIndex];
         if (current != address(0)) {
-            revert HaveConsumersError(pipeIndex, current);
+            revert Errors.HaveConsumersError(pipeIndex, current);
         }
         _consumers[user][building.index][pipeIndex] = consumer;
         emit PipeLocked(user, building.index, pipeIndex, consumer);
@@ -85,7 +72,7 @@ abstract contract EmPipe is AccessControl, IEmPipe {
         address consumer = _msgSender();
         address current = _consumers[user][building.index][pipeIndex];
         if (current != consumer) {
-            revert WrongConsumerError(pipeIndex, current);
+            revert Errors.WrongConsumerError(pipeIndex, current);
         }
         _consumers[user][building.index][pipeIndex] = address(0);
         emit PipeUnlocked(user, building.index, pipeIndex, consumer);
@@ -109,42 +96,6 @@ abstract contract EmPipe is AccessControl, IEmPipe {
     function setPipes(uint256 typeId, Progression.Params memory amount) public onlyRole(EDITOR_ROLE) {
         _pipes[typeId] = amount;
         emit PipesSet(typeId, amount);
-    }
-
-
-    /// Internal methods
-
-    function _requireConstructed(Building memory building) internal view {
-        require(building.constructedAt <= block.timestamp, "Building is not constructed");
-    }
-
-    function _requirePipeExists(Building memory building, uint8 pipeIndex) internal view {
-        require(pipeIndex < _getPipes(building), "Pipe is not reachable");
-    }
-
-    function _requireNoConsumers(address user, Building memory building) internal view {
-        uint8 pipes = _getPipes(building);
-        for (uint8 i; i < pipes; i++) {
-            if (_consumers[user][building.index][i] != address(0)) {
-                revert HaveConsumersError(i, _consumers[user][building.index][i]);
-            }
-        }
-    }
-
-    function _getPipes(Building memory building) internal view returns (uint8) {
-        uint256 realPipes = _pipes[building.typeId].get(building.level);
-        return realPipes <= type(uint8).max
-            ? uint8(realPipes)
-            : type(uint8).max;
-    }
-
-    function _getConsumers(address user, Building memory building) internal view returns (address[] memory) {
-        uint8 pipes = _getPipes(building);
-        address[] memory consumers = new address[](pipes);
-        for (uint8 i; i < pipes; i++) {
-            consumers[i] = _consumers[user][building.index][i];
-        }
-        return consumers;
     }
 
 }

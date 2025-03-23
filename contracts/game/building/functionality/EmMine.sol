@@ -5,22 +5,15 @@ import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet
 import {Progression} from "../../../utils/Progression.sol";
 import {IEmMine, MineType, Mine} from "../interfaces/IEmMine.sol";
 import {IEmResource} from "../../../token/EmResource/interfaces/IEmResource.sol";
-import {EmPipe, Building} from "../context/EmPipe.sol";
+import {EmPipe, Building} from "./EmPipe.sol";
+import {EmMineContext} from "../context/EmMineContext.sol";
 import {PERCENT_PRECISION} from "../../../core/const.sol";
 
 /// @dev Require EmResFactory MINTER_ROLE;
-contract EmMine is EmPipe, IEmMine {
+contract EmMine is EmPipe, EmMineContext, IEmMine {
 
     using EnumerableSet for EnumerableSet.UintSet;
     using Progression for Progression.Params;
-
-    bytes32 public constant CLAIMER_ROLE = keccak256("CLAIMER_ROLE");
-
-    EnumerableSet.UintSet internal _types;
-    mapping (uint256 typeId => address resource) internal _resource;
-    mapping (uint256 typeId => Progression.Params amountPerSecond) internal _output;
-    mapping (uint256 typeId => Progression.Params volume) internal _volume;
-    mapping (address user => mapping(uint256 buildingIndex => uint256 timestamp)) internal _claimedAt;
 
     constructor(address buildingIndex, address techAddress) EmPipe(buildingIndex, techAddress) {
         _grantRole(CLAIMER_ROLE, _msgSender());

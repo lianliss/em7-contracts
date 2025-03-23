@@ -29,6 +29,31 @@ struct Building {
     uint256 constructedAt;
 }
 
+struct MineType {
+    uint256 typeId;
+    address resource;
+    Progression.Params output;
+    Progression.Params volume;
+    Progression.Params pipes;
+}
+
+struct Mine {
+    uint256 index;
+    uint256 typeId;
+    uint256 claimedAt;
+    uint256 output;
+    uint256 volume;
+    address[] consumers;
+}
+
+struct Recipe {
+    uint8 recipeId;
+    uint256 typeId;
+    ResourceProgression[] input;
+    ResourceProgression[] output;
+    Progression.Params[] volume;
+}
+
 struct InputPipe {
     uint256 buildingIndex;
     uint8 pipeIndex;

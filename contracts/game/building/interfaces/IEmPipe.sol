@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {IEmErrors} from "../../errors.sol";
 import {Progression} from "../../../utils/Progression.sol";
 
-interface IEmPipe is IEmErrors {
+interface IEmPipe {
 
     event TechRequiredSet(uint256 techIndex);
     event PipesSet(uint256 typeId, Progression.Params amount);

@@ -2,7 +2,9 @@
 pragma solidity ^0.8.24;
 
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import {EmBuildingContext, Modificator, Item} from "./context/EmBuildingContext.sol";
+import {EmBuildingContext, Proxy, Modificator, Item} from "./context/EmBuildingContext.sol";
+import {IEmTech} from "../tech/interfaces/IEmTech.sol";
+import {IEmMapExternal} from "../map/interfaces/IEmMapExternal.sol";
 import {IEmSlots} from "../slots/interfaces/IEmSlots.sol";
 import {IEmResource} from "../../token/EmResource/interfaces/IEmResource.sol";
 import {IEmEquipment, ResourceMod} from "../../NFT/Equipment/interfaces/IEmEquipment.sol";
@@ -10,6 +12,7 @@ import {IEmClaimer} from "./interfaces/IEmClaimer.sol";
 import {IEmPipe} from "./interfaces/IEmPipe.sol";
 import {DEMOLISH_PARAM_ID} from "../const.sol";
 import {PERCENT_PRECISION} from "../../core/const.sol";
+import {Errors} from "../errors.sol";
 import "./interfaces/IEmBuilding.sol";
 
 /// @notice Upgradable building with a slots;
@@ -28,7 +31,14 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
         address techAddress,
         address mapAddress,
         address slotsAddress
-    ) EmBuildingContext(techAddress, mapAddress, slotsAddress) {}
+    ) Proxy() {
+        _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        _grantRole(EDITOR_ROLE, _msgSender());
+
+        _tech = IEmTech(techAddress);
+        _map = IEmMapExternal(mapAddress);
+        _slots = IEmSlots(slotsAddress);
+    }
 
 
     /// Read methods
@@ -197,7 +207,7 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
         try IEmPipe(_types[building.typeId].functionality).getConsumers(user, building.index) returns (address[] memory consumers) {
             for (uint256 i; i < consumers.length; i++) {
                 if (consumers[i] != address(0)) {
-                    revert HaveConsumersError(uint8(i), consumers[i]);
+                    revert Errors.HaveConsumersError(uint8(i), consumers[i]);
                 }
             }
         } catch {}
@@ -207,7 +217,7 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
         if (_types[typeId].construction.levelTech.length > level) {
             uint256 techIndex = _types[typeId].construction.levelTech[level];
             if (!_tech.haveTech(user, techIndex)) {
-                revert TechNotResearched(techIndex);
+                revert Errors.TechNotResearchedError(techIndex);
             }
         }
     }
@@ -240,7 +250,7 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
         /// Check count limit
         uint256 countLimit = _types[typeId].countLimit;
         if (countLimit > 0 && _count[user][typeId] >= countLimit) {
-            revert BuildingTypeCountLimit(countLimit);
+            revert Errors.BuildingTypeCountLimitError(countLimit);
         }
         _count[user][typeId]++;
         /// Add to the map
@@ -382,7 +392,7 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
         _requireOwnership(user, tokenAddress, tokenId);
         Item storage item = _items[user][buildingIndex][slotId];
         if (item.tokenAddress != address(0)) {
-            revert SlotOccupiedError(item.tokenAddress, item.tokenId);
+            revert Errors.SlotOccupiedError(item.tokenAddress, item.tokenId);
         }
 
         IEmEquipment token = IEmEquipment(tokenAddress);

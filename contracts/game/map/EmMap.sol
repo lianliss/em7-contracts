@@ -8,6 +8,7 @@ import {IEmResFactory} from "../../token/EmResource/interfaces/IEmResFactory.sol
 import {IEmResource} from "../../token/EmResource/interfaces/IEmResource.sol";
 import {IEmMap} from "./interfaces/IEmMap.sol";
 import {MONEY_RES_ID} from "../const.sol";
+import {Errors} from "../errors.sol";
 
 contract EmMap is EmMapContext, IEmMap {
 
@@ -137,7 +138,7 @@ contract EmMap is EmMapContext, IEmMap {
 
     function setObject(address user, uint256 x, uint256 y, uint8 size, uint256 buildingIndex) public onlyRole(BUILDER_ROLE) {
         if (_isOccupied(user, x, y, size)) {
-            revert PositionIsOccupied(x, y, size);
+            revert Errors.PositionIsOccupiedError(x, y, size);
         }
         bytes32 hash = Coords.Point(x, y).hash();
         _buildings[user][buildingIndex] = hash;
@@ -198,7 +199,7 @@ contract EmMap is EmMapContext, IEmMap {
         _requireBorderingArea(user, origin.x, origin.y);
         bytes32 hash = origin.hash();
         if (_claimedHashes[user].contains(hash)) {
-            revert AreaAlreadyClaimed(x,y);
+            revert Errors.AreaAlreadyClaimedError(x,y);
         }
         _claimedHashes[user].add(hash);
         _claimedAreas[user][hash] = origin;
