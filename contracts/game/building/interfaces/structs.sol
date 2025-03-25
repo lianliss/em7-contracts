@@ -54,6 +54,13 @@ struct Recipe {
     Progression.Params[] volume;
 }
 
+struct Plant {
+    uint256 index;
+    uint256 typeId;
+    uint256 claimedAt;
+    uint8 recipeId;
+}
+
 struct InputPipe {
     uint256 buildingIndex;
     uint8 pipeIndex;

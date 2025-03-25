@@ -78,12 +78,26 @@ abstract contract EmPlantInternal is EmPipeContext, EmPlantContext, IEmPlantEven
     function _getMined(address user, Building memory building) internal view returns (uint256[] memory, uint256[] memory) {
         Recipe storage recipe = _getRecipe(user, building);
         uint256 time = block.timestamp - _getClaimedAt(user, building);
-        /// Decrease time based on residual ingredients
+        uint256 efficiency = PERCENT_PRECISION;
+        /// Loop for all inputs
         for (uint256 i; i < recipe.input.length; i++) {
-            uint256 amount = recipe.input[i].amount.get(building.level) * time;
-            if (amount > _ingredients[user][building.index][i]) {
-                uint256 rate = _ingredients[user][building.index][i] * PERCENT_PRECISION / amount;
-                time = time * rate / PERCENT_PRECISION;
+            InputPipe storage pipe = _inputs[user][building.index][uint8(i)];
+            if (pipe.buildingIndex > 0) {
+                /// Decrease effeciency based on input pipe
+                uint256 ability = recipe.input[uint256(i)].amount.get(building.level);
+                (,,uint256 realInput) = IEmPipe(pipe.functionality)
+                    .getPipeOutput(user, pipe.buildingIndex, pipe.pipeIndex);
+                uint256 rate = realInput * PERCENT_PRECISION / ability;
+                if (rate < efficiency) {
+                    efficiency = rate;
+                }
+            } else {
+                /// Decrease time based on residual ingredients
+                uint256 amount = recipe.input[i].amount.get(building.level) * time;
+                if (amount > _ingredients[user][building.index][i]) {
+                    uint256 rate = _ingredients[user][building.index][i] * PERCENT_PRECISION / amount;
+                    time = time * rate / PERCENT_PRECISION;
+                }
             }
         }
         /// Get output
@@ -91,6 +105,7 @@ abstract contract EmPlantInternal is EmPipeContext, EmPlantContext, IEmPlantEven
         uint256[] memory volume = _getRawVolume(user, building);
         for (uint256 i; i < mined.length; i++) {
             mined[i] *= time;
+            mined[i] = mined[i] * efficiency / PERCENT_PRECISION;
             if (mined[i] > volume[i]) {
                 mined[i] = volume[i];
             }
@@ -111,6 +126,9 @@ abstract contract EmPlantInternal is EmPipeContext, EmPlantContext, IEmPlantEven
         Recipe storage recipe = _getRecipe(user, building);
         /// Spend ingredients
         for (uint256 i; i < recipe.input.length; i++) {
+            if (_inputs[user][building.index][uint8(i)].buildingIndex > 0) {
+                continue;
+            }
             {
                 uint256 have = _ingredients[user][building.index][i];
                 if (spent[i] > have) {
@@ -136,7 +154,7 @@ abstract contract EmPlantInternal is EmPipeContext, EmPlantContext, IEmPlantEven
         /// Get input pipes efficiency
         uint256 efficiency = PERCENT_PRECISION;
         for (uint8 i; i < recipe.input.length; i++) {
-            uint256 ability = recipe.input[uint256(i)].amount.get(building.level) * mod / PERCENT_PRECISION;
+            uint256 ability = recipe.input[uint256(i)].amount.get(building.level);
             InputPipe storage pipe = _inputs[user][building.index][i];
             (,,uint256 realInput) = IEmPipe(pipe.functionality)
                 .getPipeOutput(user, pipe.buildingIndex, pipe.pipeIndex);
