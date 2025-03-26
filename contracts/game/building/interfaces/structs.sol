@@ -29,6 +29,11 @@ struct Building {
     uint256 constructedAt;
 }
 
+struct Consumer {
+    uint256 buildingIndex;
+    address functionality;
+}
+
 struct MineType {
     uint256 typeId;
     address resource;
@@ -43,7 +48,7 @@ struct Mine {
     uint256 claimedAt;
     uint256 output;
     uint256 volume;
-    address[] consumers;
+    Consumer[] consumers;
 }
 
 struct Recipe {
@@ -54,15 +59,19 @@ struct Recipe {
     Progression.Params[] volume;
 }
 
+struct InputPipe {
+    uint256 buildingIndex;
+    uint8 pipeIndex;
+    address functionality;
+}
+
 struct Plant {
     uint256 index;
     uint256 typeId;
     uint256 claimedAt;
     uint8 recipeId;
-}
-
-struct InputPipe {
-    uint256 buildingIndex;
-    uint8 pipeIndex;
-    address functionality;
+    uint256[] output;
+    uint256[] volume;
+    InputPipe[] sources;
+    Consumer[] consumers;
 }

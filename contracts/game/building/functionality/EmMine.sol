@@ -8,6 +8,7 @@ import {IEmResource} from "../../../token/EmResource/interfaces/IEmResource.sol"
 import {EmPipe, Building} from "./EmPipe.sol";
 import {EmMineContext} from "../context/EmMineContext.sol";
 import {PERCENT_PRECISION} from "../../../core/const.sol";
+import {Consumer} from "../interfaces/structs.sol";
 
 /// @dev Require EmResFactory MINTER_ROLE;
 contract EmMine is EmPipe, EmMineContext, IEmMine {
@@ -22,7 +23,7 @@ contract EmMine is EmPipe, EmMineContext, IEmMine {
 
     /// Read methods
 
-    function getPipeOutput(address user, uint256 buildingIndex, uint8 pipeIndex) external view returns (address consumer, address resource, uint256 amountPerSecond) {
+    function getPipeOutput(address user, uint256 buildingIndex, uint8 pipeIndex) external view returns (Consumer memory consumer, address resource, uint256 amountPerSecond) {
         Building memory building = _building.getBuilding(user, buildingIndex);
         _requireConstructed(building);
         _requirePipeExists(building, pipeIndex);
@@ -102,9 +103,9 @@ contract EmMine is EmPipe, EmMineContext, IEmMine {
         _claim(user, building);
     }
 
-    function lockPipe(address user, uint256 buildingIndex, uint8 pipeIndex) public override onlyRole(CONSUMER_ROLE) {
+    function lockPipe(address user, uint256 buildingIndex, uint8 pipeIndex, uint256 consumerIndex) public override onlyRole(CONSUMER_ROLE) {
         _claim(user, _building.getBuilding(user, buildingIndex));
-        super.lockPipe(user, buildingIndex, pipeIndex);
+        super.lockPipe(user, buildingIndex, pipeIndex, consumerIndex);
     }
 
     function unlockPipe(address user, uint256 buildingIndex, uint8 pipeIndex) public override onlyRole(CONSUMER_ROLE) {

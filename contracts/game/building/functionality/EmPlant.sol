@@ -7,7 +7,7 @@ import {Progression} from "../../../utils/Progression.sol";
 import {IEmPlant, Recipe} from "../interfaces/IEmPlant.sol";
 import {IEmResource} from "../../../token/EmResource/interfaces/IEmResource.sol";
 import {EmPipe, IEmPipe, Building} from "./EmPipe.sol";
-import {InputPipe} from "../interfaces/structs.sol";
+import {InputPipe, Consumer, Plant} from "../interfaces/structs.sol";
 import {PERCENT_PRECISION} from "../../../core/const.sol";
 import {EmPlantContext} from "../context/EmPlantContext.sol";
 import {EmPlantInternal} from "../functionality/EmPlantInternal.sol";
@@ -23,7 +23,7 @@ contract EmPlant is EmPipe, EmPlantContext, EmPlantInternal, IEmPlant {
         _grantRole(CLAIMER_ROLE, _msgSender());
     }
 
-    function getPipeOutput(address user, uint256 buildingIndex, uint8 pipeIndex) external view returns (address consumer, address resource, uint256 amountPerSecond) {
+    function getPipeOutput(address user, uint256 buildingIndex, uint8 pipeIndex) external view returns (Consumer memory consumer, address resource, uint256 amountPerSecond) {
         Building memory building = _building.getBuilding(user, buildingIndex);
         _requireConstructed(building);
         _requirePipeExists(building, pipeIndex);
@@ -41,6 +41,25 @@ contract EmPlant is EmPipe, EmPlantContext, EmPlantInternal, IEmPlant {
             data[i] = _recipes[_types.at(offset + i)];
         }
         return (data, count);
+    }
+
+    function getPlant(address user, uint256 buildingIndex) public view returns (Plant memory) {
+        Building memory building = _building.getBuilding(user, buildingIndex);
+        Recipe storage recipe = _getRecipe(user, building);
+        InputPipe[] memory sources = new InputPipe[](recipe.input.length);
+        for (uint8 i; i < uint8(recipe.input.length); i++) {
+            sources[i] = _inputs[user][buildingIndex][i];
+        }
+        return Plant(
+            buildingIndex,
+            building.typeId,
+            _claimedAt[user][buildingIndex],
+            recipe.recipeId,
+            _getRawOutput(user, building),
+            _getRawVolume(user, building),
+            sources,
+            getConsumers(user, buildingIndex)
+        );
     }
 
 
@@ -62,7 +81,7 @@ contract EmPlant is EmPipe, EmPlantContext, EmPlantInternal, IEmPlant {
         (, address resource,) = pipe.getPipeOutput(user, sourceBuildingIndex, sourcePipeId);
         require(resource == recipe.input[inputIndex].resource, "Wrong source resource");
         /// Connect pipe
-        pipe.lockPipe(user, sourceBuildingIndex, sourcePipeId);
+        pipe.lockPipe(user, sourceBuildingIndex, sourcePipeId, buildingIndex);
         _inputs[user][building.index][inputIndex].buildingIndex = sourceBuildingIndex;
         _inputs[user][building.index][inputIndex].pipeIndex = sourcePipeId;
         _inputs[user][building.index][inputIndex].functionality = address(pipe);
@@ -83,11 +102,11 @@ contract EmPlant is EmPipe, EmPlantContext, EmPlantInternal, IEmPlant {
         _claim(user, building);
     }
 
-    function lockPipe(address user, uint256 buildingIndex, uint8 pipeIndex) public override(EmPipe, IEmPipe) onlyRole(CONSUMER_ROLE) {
+    function lockPipe(address user, uint256 buildingIndex, uint8 pipeIndex, uint256 consumerIndex) public override(EmPipe, IEmPipe) onlyRole(CONSUMER_ROLE) {
         Building memory building = _building.getBuilding(user, buildingIndex);
         _claim(user, building);
         _requireInputsConnected(user, building);
-        super.lockPipe(user, buildingIndex, pipeIndex);
+        super.lockPipe(user, buildingIndex, pipeIndex, consumerIndex);
     }
 
     function unlockPipe(address user, uint256 buildingIndex, uint8 pipeIndex) public override(EmPipe, IEmPipe) onlyRole(CONSUMER_ROLE) {

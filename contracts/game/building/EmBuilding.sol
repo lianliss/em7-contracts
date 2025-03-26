@@ -13,6 +13,7 @@ import {IEmPipe} from "./interfaces/IEmPipe.sol";
 import {DEMOLISH_PARAM_ID} from "../const.sol";
 import {PERCENT_PRECISION} from "../../core/const.sol";
 import {Errors} from "../errors.sol";
+import {Consumer} from "./interfaces/structs.sol";
 import "./interfaces/IEmBuilding.sol";
 
 /// @notice Upgradable building with a slots;
@@ -204,10 +205,10 @@ contract EmBuilding is EmBuildingContext, IEmBuilding {
     }
 
     function _requireNoConsumers(address user, Building storage building) internal view {
-        try IEmPipe(_types[building.typeId].functionality).getConsumers(user, building.index) returns (address[] memory consumers) {
+        try IEmPipe(_types[building.typeId].functionality).getConsumers(user, building.index) returns (Consumer[] memory consumers) {
             for (uint256 i; i < consumers.length; i++) {
-                if (consumers[i] != address(0)) {
-                    revert Errors.HaveConsumersError(uint8(i), consumers[i]);
+                if (consumers[i].functionality != address(0)) {
+                    revert Errors.HaveConsumersError(uint8(i), consumers[i].functionality, consumers[i].buildingIndex);
                 }
             }
         } catch {}

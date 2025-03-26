@@ -8,6 +8,7 @@ import {IEmBuilding, Building} from "../interfaces/IEmBuilding.sol";
 import {IEmPipe} from "../interfaces/IEmPipe.sol";
 import {IEmTech} from "../../tech/interfaces/IEmTech.sol";
 import {Errors} from "../../errors.sol";
+import {Consumer} from "../interfaces/structs.sol";
 
 /// @notice Pipe extention for building functionality;
 /// @dev Use in building functionality contract;
@@ -31,7 +32,7 @@ abstract contract EmPipe is EmPipeContext, EmPipeInternal, IEmPipe {
     /// @param user Account address;
     /// @param buildingIndex Building identificator;
     /// @return Array of consumers addresses;
-    function getConsumers(address user, uint256 buildingIndex) public view returns (address[] memory) {
+    function getConsumers(address user, uint256 buildingIndex) public view returns (Consumer[] memory) {
         Building memory building = _building.getBuilding(user, buildingIndex);
         return _getConsumers(user, building);
     }
@@ -45,19 +46,21 @@ abstract contract EmPipe is EmPipeContext, EmPipeInternal, IEmPipe {
     /// @param pipeIndex Pipe index;
     /// @dev The message sender will be a consumer;
     /// @dev CONSUMER_ROLE required;
-    function lockPipe(address user, uint256 buildingIndex, uint8 pipeIndex) public virtual onlyRole(CONSUMER_ROLE) {
+    function lockPipe(address user, uint256 buildingIndex, uint8 pipeIndex, uint256 consumerIndex) public virtual onlyRole(CONSUMER_ROLE) {
         if (techRequired == 0 || !_tech.haveTech(user, techRequired)) {
             revert Errors.TechNotResearchedError(techRequired);
         }
         Building memory building = _building.getBuilding(user, buildingIndex);
         _requirePipeExists(building, pipeIndex);
-        address consumer = _msgSender();
-        address current = _consumers[user][building.index][pipeIndex];
-        if (current != address(0)) {
-            revert Errors.HaveConsumersError(pipeIndex, current);
+        address consumerAddress = _msgSender();
+        Consumer storage consumer = _consumers[user][building.index][pipeIndex];
+        if (consumer.functionality != address(0)) {
+            revert Errors.HaveConsumersError(pipeIndex, consumer.functionality, consumer.buildingIndex);
         }
-        _consumers[user][building.index][pipeIndex] = consumer;
-        emit PipeLocked(user, building.index, pipeIndex, consumer);
+        consumer.functionality = consumerAddress;
+        consumer.buildingIndex = consumerIndex;
+
+        emit PipeLocked(user, building.index, pipeIndex, consumerAddress, consumerIndex);
     }
 
     /// @notice Unlock the building pipe connection;
@@ -69,13 +72,13 @@ abstract contract EmPipe is EmPipeContext, EmPipeInternal, IEmPipe {
     function unlockPipe(address user, uint256 buildingIndex, uint8 pipeIndex) public virtual onlyRole(CONSUMER_ROLE) {
         Building memory building = _building.getBuilding(user, buildingIndex);
         _requirePipeExists(building, pipeIndex);
-        address consumer = _msgSender();
-        address current = _consumers[user][building.index][pipeIndex];
-        if (current != consumer) {
-            revert Errors.WrongConsumerError(pipeIndex, current);
+        address consumerAddress = _msgSender();
+        Consumer storage consumer = _consumers[user][building.index][pipeIndex];
+        if (consumer.functionality != consumerAddress) {
+            revert Errors.WrongConsumerError(pipeIndex, consumer.functionality, consumer.buildingIndex);
         }
-        _consumers[user][building.index][pipeIndex] = address(0);
-        emit PipeUnlocked(user, building.index, pipeIndex, consumer);
+        emit PipeUnlocked(user, building.index, pipeIndex, consumer.functionality, consumer.buildingIndex);
+        delete _consumers[user][building.index][pipeIndex];
     }
 
 

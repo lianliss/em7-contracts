@@ -31,8 +31,8 @@ abstract contract EmPlantInternal is EmPipeContext, EmPlantContext, IEmPlantEven
     function _requirePlantNoConsumers(address user, Building memory building) internal view virtual {
         uint8 pipes = _getPlantPipes(building);
         for (uint8 i; i < pipes; i++) {
-            if (_consumers[user][building.index][i] != address(0)) {
-                revert Errors.HaveConsumersError(i, _consumers[user][building.index][i]);
+            if (_consumers[user][building.index][i].functionality != address(0)) {
+                revert Errors.HaveConsumersError(i, _consumers[user][building.index][i].functionality, _consumers[user][building.index][i].buildingIndex);
             }
         }
     }

@@ -5,6 +5,7 @@ import {Proxy} from "../../../Proxy/Proxy.sol";
 import {Progression} from "../../../utils/Progression.sol";
 import {IEmBuilding} from "../interfaces/IEmBuilding.sol";
 import {IEmTech} from "../../tech/interfaces/IEmTech.sol";
+import {Consumer} from "../interfaces/structs.sol";
 
 /// @notice Pipe extention for building functionality;
 /// @dev Use in building functionality contract;
@@ -23,6 +24,6 @@ abstract contract EmPipeContext is Proxy {
     mapping(
         address user => mapping(
             uint256 buildingIndex => mapping(
-                uint8 pipeIndex => address consumer))) internal _consumers;
+                uint8 pipeIndex => Consumer consumer))) internal _consumers;
 
 }

@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {EmPipeContext} from "../context/EmPipeContext.sol";
 import {Progression} from "../../../utils/Progression.sol";
-import {Building} from "../interfaces/structs.sol";
+import {Building, Consumer} from "../interfaces/structs.sol";
 import {Errors} from "../../errors.sol";
 
 /// @notice Pipe internal methods;
@@ -23,8 +23,8 @@ abstract contract EmPipeInternal is EmPipeContext {
     function _requireNoConsumers(address user, Building memory building) internal view virtual {
         uint8 pipes = _getPipes(building);
         for (uint8 i; i < pipes; i++) {
-            if (_consumers[user][building.index][i] != address(0)) {
-                revert Errors.HaveConsumersError(i, _consumers[user][building.index][i]);
+            if (_consumers[user][building.index][i].functionality != address(0)) {
+                revert Errors.HaveConsumersError(i, _consumers[user][building.index][i].functionality, _consumers[user][building.index][i].buildingIndex);
             }
         }
     }
@@ -36,9 +36,9 @@ abstract contract EmPipeInternal is EmPipeContext {
             : type(uint8).max;
     }
 
-    function _getConsumers(address user, Building memory building) internal view virtual returns (address[] memory) {
+    function _getConsumers(address user, Building memory building) internal view virtual returns (Consumer[] memory) {
         uint8 pipes = _getPipes(building);
-        address[] memory consumers = new address[](pipes);
+        Consumer[] memory consumers = new Consumer[](pipes);
         for (uint8 i; i < pipes; i++) {
             consumers[i] = _consumers[user][building.index][i];
         }

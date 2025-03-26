@@ -11,8 +11,8 @@ library Errors {
     error BuildingTypeCountLimitError(uint256 limit);
     error SlotOccupiedError(address tokenAddress, uint256 tokenId);
 
-    error HaveConsumersError(uint8 pipeIndex, address consumerAddress);
-    error WrongConsumerError(uint8 pipeIndex, address consumerAddress);
+    error HaveConsumersError(uint8 pipeIndex, address consumerAddress, uint256 consumerIndex);
+    error WrongConsumerError(uint8 pipeIndex, address consumerAddress, uint256 consumerIndex);
     error HaveSourcesError(uint8 sourceIndex, address sourceAddress);
 
 }
