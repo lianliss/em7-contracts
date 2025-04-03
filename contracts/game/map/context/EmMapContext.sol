@@ -11,9 +11,9 @@ import {Progression} from "../../../utils/Progression.sol";
 
 abstract contract EmMapContext is Proxy {
 
-    bytes32 internal constant EDITOR_ROLE = keccak256("EDITOR_ROLE");
-    bytes32 internal constant BUILDER_ROLE = keccak256("BUILDER_ROLE");
-    bytes32 internal constant MOD_ROLE = keccak256("MOD_ROLE");
+    bytes32 public constant EDITOR_ROLE = keccak256("EDITOR_ROLE");
+    bytes32 public constant BUILDER_ROLE = keccak256("BUILDER_ROLE");
+    bytes32 public constant MOD_ROLE = keccak256("MOD_ROLE");
 
     IEmStarsExternal internal immutable _stars;
     IEmResFactory internal immutable _res;

@@ -11,7 +11,9 @@ contract EmBuildingEditor is EmBuildingContext, ProxyImplementation, IEmBuilding
 
     constructor(
         address buildingAddress
-    ) ProxyImplementation(buildingAddress) {}
+    ) ProxyImplementation(buildingAddress) {
+        _grantRole(EDITOR_ROLE, _msgSender());
+    }
 
     function _setReturnDevider(bytes memory encoded) internal {
         (bool isProxy,) = routedDelegate("xSetReturnDevider(bytes)", encoded);
@@ -39,11 +41,13 @@ contract EmBuildingEditor is EmBuildingContext, ProxyImplementation, IEmBuilding
                 string memory title,
                 address functionalityAddress,
                 uint256 minLevel,
-                uint256 maxLevel
-            ) = abi.decode(encoded, (string, address, uint256, uint256));
+                uint256 maxLevel,
+                uint256 countLimit,
+                uint8 size
+            ) = abi.decode(encoded, (string, address, uint256, uint256, uint256, uint8));
             uint256 typeId = _typesLength++;
             _types[typeId].typeId = typeId;
-            _setType(typeId, title, functionalityAddress, minLevel, maxLevel);
+            _setType(typeId, title, functionalityAddress, minLevel, maxLevel, countLimit, size);
         }
     }
     /// @notice Proxy entrance
@@ -55,9 +59,11 @@ contract EmBuildingEditor is EmBuildingContext, ProxyImplementation, IEmBuilding
         string memory title,
         address functionalityAddress,
         uint256 minLevel,
-        uint256 maxLevel
+        uint256 maxLevel,
+        uint256 countLimit,
+        uint8 size
     ) public onlyRole(EDITOR_ROLE) {
-        _addType(abi.encode(title, functionalityAddress, minLevel, maxLevel));
+        _addType(abi.encode(title, functionalityAddress, minLevel, maxLevel, countLimit, size));
     }
 
 
@@ -69,10 +75,12 @@ contract EmBuildingEditor is EmBuildingContext, ProxyImplementation, IEmBuilding
                 string memory title,
                 address functionalityAddress,
                 uint256 minLevel,
-                uint256 maxLevel
-            ) = abi.decode(encoded, (uint256, string, address, uint256, uint256));
+                uint256 maxLevel,
+                uint256 countLimit,
+                uint8 size
+            ) = abi.decode(encoded, (uint256, string, address, uint256, uint256, uint256, uint8));
             _requireTypeExists(typeId);
-            _setType(typeId, title, functionalityAddress, minLevel, maxLevel);
+            _setType(typeId, title, functionalityAddress, minLevel, maxLevel, countLimit, size);
         }
     }
     /// @notice Proxy entrance
@@ -85,9 +93,11 @@ contract EmBuildingEditor is EmBuildingContext, ProxyImplementation, IEmBuilding
         string memory title,
         address functionalityAddress,
         uint256 minLevel,
-        uint256 maxLevel
+        uint256 maxLevel,
+        uint256 countLimit,
+        uint8 size
     ) public onlyRole(EDITOR_ROLE) {
-        _updateType(abi.encode(typeId, title, functionalityAddress, minLevel, maxLevel));
+        _updateType(abi.encode(typeId, title, functionalityAddress, minLevel, maxLevel, countLimit, size));
     }
 
 
@@ -194,12 +204,16 @@ contract EmBuildingEditor is EmBuildingContext, ProxyImplementation, IEmBuilding
         string memory title,
         address functionalityAddress,
         uint256 minLevel,
-        uint256 maxLevel
+        uint256 maxLevel,
+        uint256 countLimit,
+        uint8 size
     ) internal {
         _types[typeId].title = title;
         _types[typeId].functionality = functionalityAddress;
         _types[typeId].minLevel = minLevel;
         _types[typeId].maxLevel = maxLevel;
+        _types[typeId].countLimit = countLimit;
+        _types[typeId].size = size;
 
         emit BuildingTypeSet(typeId, functionalityAddress, title, minLevel, maxLevel);
     }

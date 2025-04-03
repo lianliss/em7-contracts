@@ -16,7 +16,7 @@ contract EmMine is EmPipe, EmMineContext, IEmMine {
     using EnumerableSet for EnumerableSet.UintSet;
     using Progression for Progression.Params;
 
-    constructor(address buildingIndex, address techAddress) EmPipe(buildingIndex, techAddress) {
+    constructor(address buildingAddress, address techAddress) EmPipe(buildingAddress, techAddress) {
         _grantRole(CLAIMER_ROLE, _msgSender());
     }
 

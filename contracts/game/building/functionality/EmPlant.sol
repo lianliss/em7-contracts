@@ -13,6 +13,7 @@ import {EmPlantContext} from "../context/EmPlantContext.sol";
 import {EmPlantInternal} from "../functionality/EmPlantInternal.sol";
 
 /// @dev Require add to EmResFactory whitelist;
+/// @dev Require EmResFactory MINTER_ROLE;
 /// @dev Require functionality buildings CONSUMER_ROLE;
 contract EmPlant is EmPipe, EmPlantContext, EmPlantInternal, IEmPlant {
 

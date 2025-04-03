@@ -1,70 +1,15 @@
+const deployAndSetupContracts = require("./fixtures/deployCore.js");
+const {
+  LOCKUP_TIME,
+  LOCKUP_UNIT,
+  HOUR,
+  DAY,
+} = require("./fixtures/const");
+const {
+  increaseTime,
+  wei,
+} = require("./fixtures/utils");
 const {ethers} = require("hardhat");
-
-// Helper function to create an array of test token IDs with given rarities
-
-async function increaseTime(duration) {
-  await ethers.provider.send("evm_increaseTime", [duration]);
-  await ethers.provider.send("evm_mine", []);
-}
-
-const HOUR = 3600;
-const DAY = HOUR * 24;
-
-// const LOCKUP_TIME = 95 * DAY;
-// const LOCKUP_UNIT = 5 * DAY;
-const LOCKUP_TIME = 9 * DAY;
-const LOCKUP_UNIT = 1 * DAY;
-
-// Helper function to deploy and configure contracts
-async function deployAndSetupContracts() {
-  try {
-    const list = {
-      EmAuth: [],
-      EmReferral: [],
-      EmStars: [
-        LOCKUP_TIME,
-        LOCKUP_UNIT,
-        'EmAuth',
-        'EmReferral',
-      ],
-      IncomeDistributor: ['EmStars'],
-    }
-    const listKeys = Object.keys(list);
-    const factory = {};
-    const contract = {};
-    const getValue = value => {
-      return typeof value === 'string' && !!contract[value]
-        ? contract[value].address
-        : value;
-    }
-    await Promise.all(listKeys.map(async name => factory[name] = await ethers.getContractFactory(name)));
-    for (let i = 0; i < listKeys.length; i++) {
-      const name = listKeys[i];
-      const args = list[name].map(value => getValue(value));
-      // console.log('DEPLOY', name, args);
-      contract[name] = await factory[name].deploy(...args);
-    }
-    
-    await Promise.all(Object.keys(contract).map(name => contract[name].deployed()));
-    
-    // Update dependencies
-    await contract.EmStars.setIncomeDistributor(contract.IncomeDistributor.address);
-    await contract.EmAuth.grantRole(
-      await contract.EmAuth.BLACKLIST_ROLE(),
-      contract.EmStars.address,
-    )
-    
-    return contract;
-  } catch (error) {
-    console.error('[deployAndSetupContracts]', error);
-    throw error;
-  }
-}
-
-const wei = {
-  from: value => Number(ethers.utils.formatEther(value)),
-  to: value => ethers.utils.parseEther(typeof value === 'number' ? value.toString() : value),
-}
 
 const processLockups = lockups => lockups.map(l => ({
   untilTimestamp: l.untilTimestamp.toNumber(),

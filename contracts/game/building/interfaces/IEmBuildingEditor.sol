@@ -11,14 +11,18 @@ interface IEmBuildingEditor is IEmBuildingEvents {
         string calldata title,
         address functionalityAddress,
         uint256 minLevel,
-        uint256 maxLevel
+        uint256 maxLevel,
+        uint256 countLimit,
+        uint8 size
     ) external;
     function updateType(
         uint256 typeId,
         string calldata title,
         address functionalityAddress,
         uint256 minLevel,
-        uint256 maxLevel
+        uint256 maxLevel,
+        uint256 countLimit,
+        uint8 size
     ) external;
     function setTypeSlots(uint256 typeId, uint256[] calldata slots) external;
     function setBuildingRequirements(uint256 typeId, BuildRequirements calldata requirements) external;

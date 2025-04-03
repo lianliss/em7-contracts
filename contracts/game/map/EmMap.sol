@@ -10,6 +10,8 @@ import {IEmMap} from "./interfaces/IEmMap.sol";
 import {MONEY_RES_ID} from "../const.sol";
 import {Errors} from "../errors.sol";
 
+/// @dev Require EmStars SPENDER_ROLE;
+/// @dev Require EmResFactory BURNER_ROLE;
 contract EmMap is EmMapContext, IEmMap {
 
     using EnumerableSet for EnumerableSet.Bytes32Set;
@@ -104,6 +106,7 @@ contract EmMap is EmMapContext, IEmMap {
         uint256 price = _price.get(_paidAreas[user]++);
         IEmResource money = _money();
         if (price > 0) money.burn(user, price);
+        /// TODO Add discount mod
         _claimArea(user, x, y);
         emit AreaPaid(user, x, y, address(money), price);
     }
@@ -152,7 +155,7 @@ contract EmMap is EmMapContext, IEmMap {
         uint256 yLimit = y + uint256(size);
         for (uint256 h = x; h < xLimit; h++) {
             for (uint256 v = y; v < yLimit; v++) {
-                _tiles[user][x][y] = hash;
+                _tiles[user][h][v] = hash;
             }
         }
         emit ObjectSet(user, x, y, size, buildingIndex);

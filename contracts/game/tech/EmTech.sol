@@ -9,6 +9,7 @@ import {IEmSlots} from "../slots/interfaces/IEmSlots.sol";
 import {SCIENCE_RES_ID, RESEARCH_PARAM_ID} from "../const.sol";
 import {PERCENT_PRECISION} from "../../core/const.sol";
 
+/// @dev Require EmResFactory BURNER_ROLE;
 contract EmTech is AccessControl, IEmTech {
 
     bytes32 public constant EDITOR_ROLE = keccak256("EDITOR_ROLE");
