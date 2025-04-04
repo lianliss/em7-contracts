@@ -18,6 +18,7 @@ async function deployCore() {
         'EmReferral',
       ],
       IncomeDistributor: ['EmStars'],
+      Balances: [],
     }
     const listKeys = Object.keys(list);
     const factory = {};
