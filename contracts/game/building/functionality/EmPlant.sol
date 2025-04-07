@@ -58,6 +58,7 @@ contract EmPlant is EmPipe, EmPlantContext, EmPlantInternal, IEmPlant {
             recipe.recipeId,
             _getRawOutput(user, building),
             _getRawVolume(user, building),
+            _ingredients[user][buildingIndex],
             sources,
             getConsumers(user, buildingIndex)
         );

@@ -43,13 +43,13 @@ contract EmResource is ERC20, IEmResource {
     }
 
     function mint(address to, uint256 amount) external {
-        require(_factory.hasRole(MINTER_ROLE, _msgSender()), "Action is not allowed");
+        require(_factory.hasRole(MINTER_ROLE, _msgSender()), "Mint action is not allowed");
         _auth.banCheck(to);
         _mint(to, amount);
     }
 
     function burn(address from, uint256 amount) external {
-        require(_factory.hasRole(BURNER_ROLE, _msgSender()), "Action is not allowed");
+        require(_factory.hasRole(BURNER_ROLE, _msgSender()), "Burn action is not allowed");
         _burn(from, amount);
     }
 

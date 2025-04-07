@@ -14,6 +14,7 @@ import {ProxyImplementation} from "../../../Proxy/ProxyImplementation.sol";
 import {IEmPlantExtra} from "../interfaces/IEmPlantExtra.sol";
 import {EmPlantInternal} from "../functionality/EmPlantInternal.sol";
 import {Errors} from "../../errors.sol";
+import "hardhat/console.sol";
 
 contract EmPlantExtra is EmPipeContext, EmPlantContext, ProxyImplementation, EmPlantInternal, IEmPlantExtra {
 
@@ -23,6 +24,7 @@ contract EmPlantExtra is EmPipeContext, EmPlantContext, ProxyImplementation, EmP
     constructor(
         address plantAddress
     ) ProxyImplementation(plantAddress) {
+        _grantRole(EDITOR_ROLE, _msgSender());
         _grantRole(CLAIMER_ROLE, _msgSender());
     }
 
@@ -96,13 +98,13 @@ contract EmPlantExtra is EmPipeContext, EmPlantContext, ProxyImplementation, EmP
     }
     /// @notice Proxy entrance
     function xReleaseIngredients(bytes memory encoded) public onlyRole(PROXY_ROLE) {
-        _fillIngredients(encoded);
+        _releaseIngredients(encoded);
     }
     /// @notice Returns ingredients from the plant;
     /// @param buildingIndex User building identificator;
     function releaseIngredients(uint256 buildingIndex) public {
         address user = _msgSender();
-        _fillIngredients(abi.encode(user, buildingIndex));
+        _releaseIngredients(abi.encode(user, buildingIndex));
     }
 
 
@@ -219,6 +221,9 @@ contract EmPlantExtra is EmPipeContext, EmPlantContext, ProxyImplementation, EmP
         Recipe storage recipe = _getRecipe(user, building);
         uint256[] memory volume = _getIngredientsVolume(user, building, recipe);
         for (uint256 i; i < recipe.input.length; i++) {
+            if (i >= _ingredients[user][building.index].length) {
+                _ingredients[user][building.index].push();
+            }
             if (_ingredients[user][building.index][i] < volume[i]) {
                 uint256 amount;
                 IEmResource resource;

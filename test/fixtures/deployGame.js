@@ -70,6 +70,10 @@ async function deployGame() {
       await contract.EmResFactory.MINTER_ROLE(),
       contract.EmPlant.address,
     )
+    await contract.EmResFactory.grantRole(
+      await contract.EmResFactory.BURNER_ROLE(),
+      contract.EmPlant.address,
+    )
     await contract.EmMine.grantRole(
       await contract.EmMine.CONSUMER_ROLE(),
       contract.EmPlant.address,

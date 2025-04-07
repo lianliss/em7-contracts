@@ -14,8 +14,8 @@ abstract contract EmPipeContext is Proxy {
     bytes32 public constant EDITOR_ROLE = keccak256("EDITOR_ROLE");
     bytes32 public constant CONSUMER_ROLE = keccak256("CONSUMER_ROLE");
 
-    IEmTech internal immutable _tech;
-    IEmBuilding internal immutable _building;
+    IEmTech internal _tech;
+    IEmBuilding internal _building;
 
     uint256 public techRequired;
     /// Building type pipes amount progression

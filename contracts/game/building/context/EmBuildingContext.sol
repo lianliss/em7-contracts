@@ -15,9 +15,9 @@ abstract contract EmBuildingContext is Proxy {
     bytes32 internal constant EDITOR_ROLE = keccak256("EDITOR_ROLE");
     bytes32 internal constant MOD_ROLE = keccak256("MOD_ROLE");
 
-    IEmTech internal immutable _tech;
-    IEmMapExternal internal immutable _map;
-    IEmSlots internal immutable _slots;
+    IEmTech internal _tech;
+    IEmMapExternal internal _map;
+    IEmSlots internal _slots;
 
     /// Devider for resources amount to return on demolish
     uint256 internal _returnDevider = 2;

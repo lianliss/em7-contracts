@@ -72,6 +72,7 @@ struct Plant {
     uint8 recipeId;
     uint256[] output;
     uint256[] volume;
+    uint256[] ingredients;
     InputPipe[] sources;
     Consumer[] consumers;
 }

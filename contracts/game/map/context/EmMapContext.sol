@@ -15,8 +15,8 @@ abstract contract EmMapContext is Proxy {
     bytes32 public constant BUILDER_ROLE = keccak256("BUILDER_ROLE");
     bytes32 public constant MOD_ROLE = keccak256("MOD_ROLE");
 
-    IEmStarsExternal internal immutable _stars;
-    IEmResFactory internal immutable _res;
+    IEmStarsExternal internal _stars;
+    IEmResFactory internal _res;
 
     Progression.Params internal _price;
     Progression.Params internal _starsPrice;

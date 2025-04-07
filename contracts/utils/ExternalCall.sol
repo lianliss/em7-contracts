@@ -2,10 +2,9 @@
 pragma solidity ^0.8.24;
 
 import {CallData} from "./CallData.sol";
+import {Errors} from "../game/errors.sol";
 
 abstract contract ExternalCall {
-
-    error CustomRevert(bytes data);
 
     /// @notice Process external call data
     /// @param success Is successful call
@@ -22,7 +21,11 @@ abstract contract ExternalCall {
                 revert(errorMessage);
             } else {
                 /// Unknown custom error method
-                revert CustomRevert(data);
+
+                /// @solidity memory-safe-assembly
+                assembly {
+                    revert(add(32, data), mload(data))
+                }
             }
         }
     }

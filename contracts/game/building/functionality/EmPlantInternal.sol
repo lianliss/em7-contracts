@@ -93,6 +93,10 @@ abstract contract EmPlantInternal is EmPipeContext, EmPlantContext, IEmPlantEven
                 }
             } else {
                 /// Decrease time based on residual ingredients
+                if (i >= _ingredients[user][building.index].length) {
+                    time = 0;
+                    continue;
+                }
                 uint256 amount = recipe.input[i].amount.get(building.level) * time;
                 if (amount > _ingredients[user][building.index][i]) {
                     uint256 rate = _ingredients[user][building.index][i] * PERCENT_PRECISION / amount;
@@ -126,7 +130,8 @@ abstract contract EmPlantInternal is EmPipeContext, EmPlantContext, IEmPlantEven
         Recipe storage recipe = _getRecipe(user, building);
         /// Spend ingredients
         for (uint256 i; i < recipe.input.length; i++) {
-            if (_inputs[user][building.index][uint8(i)].buildingIndex > 0) {
+            if (_inputs[user][building.index][uint8(i)].buildingIndex > 0
+                || i >= _ingredients[user][building.index].length) {
                 continue;
             }
             {

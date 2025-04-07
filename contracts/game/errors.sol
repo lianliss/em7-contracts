@@ -3,6 +3,8 @@ pragma solidity ^0.8.24;
 
 library Errors {
 
+    /// @notice The user has not researched the technology
+    /// @param techIndex Technology index
     error TechNotResearchedError(uint256 techIndex);
 
     error AreaAlreadyClaimedError(uint256 x, uint256 y);

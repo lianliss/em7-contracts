@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IProxy} from "contracts/Proxy/IProxy.sol";
+import {console} from "hardhat/console.sol";
 
 abstract contract Proxy is IProxy, AccessControl {
 
