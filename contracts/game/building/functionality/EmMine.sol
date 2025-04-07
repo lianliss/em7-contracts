@@ -81,12 +81,13 @@ contract EmMine is EmPipe, EmMineContext, IEmMine {
 
     /// Admin methods
     
-    function setTypeParams(uint256 typeId, address resourceAddress, Progression.Params memory output, Progression.Params memory volume) public onlyRole(EDITOR_ROLE) {
+    function setTypeParams(uint256 typeId, address resourceAddress, Progression.Params memory output, Progression.Params memory volume, Progression.Params memory pipes) public onlyRole(EDITOR_ROLE) {
         _types.add(typeId);
         _resource[typeId] = resourceAddress;
         _output[typeId] = output;
         _volume[typeId] = volume;
-        emit TypeParamsSet(typeId, resourceAddress, output, volume);
+        _pipes[typeId] = pipes;
+        emit TypeParamsSet(typeId, resourceAddress, output, volume, pipes);
     }
 
     function removeType(uint256 typeId) public onlyRole(EDITOR_ROLE) {

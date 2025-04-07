@@ -78,7 +78,7 @@ contract EmPlant is EmPipe, EmPlantContext, EmPlantInternal, IEmPlant {
         Building memory building = _building.getBuilding(user, buildingIndex);
         Recipe storage recipe = _getRecipe(user, building);
         _disconnectSource(user, building, inputIndex);
-        IEmPipe pipe = IEmPipe(_building.getBuildingFunctionality(user, buildingIndex));
+        IEmPipe pipe = IEmPipe(_building.getBuildingFunctionality(user, sourceBuildingIndex));
         /// Chect incoming resource type
         (, address resource,) = pipe.getPipeOutput(user, sourceBuildingIndex, sourcePipeId);
         require(resource == recipe.input[inputIndex].resource, "Wrong source resource");

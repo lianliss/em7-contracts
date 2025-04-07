@@ -43,7 +43,11 @@ describe("EmMine Contract", function () {
       base: 60,
       geometric: 1,
       step: 30,
-    },)
+    },{
+      base: 1,
+      geometric: 1,
+      step: 0,
+    })
     
     await EmMap.connect(user).claimArea(0,0);
     await EmBuilding.connect(user).build(0, 0, 0);

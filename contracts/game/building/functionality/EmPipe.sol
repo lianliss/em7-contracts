@@ -47,7 +47,7 @@ abstract contract EmPipe is EmPipeContext, EmPipeInternal, IEmPipe {
     /// @dev The message sender will be a consumer;
     /// @dev CONSUMER_ROLE required;
     function lockPipe(address user, uint256 buildingIndex, uint8 pipeIndex, uint256 consumerIndex) public virtual onlyRole(CONSUMER_ROLE) {
-        if (techRequired == 0 || !_tech.haveTech(user, techRequired)) {
+        if (techRequired != 0 && !_tech.haveTech(user, techRequired)) {
             revert Errors.TechNotResearchedError(techRequired);
         }
         Building memory building = _building.getBuilding(user, buildingIndex);

@@ -14,7 +14,6 @@ import {ProxyImplementation} from "../../../Proxy/ProxyImplementation.sol";
 import {IEmPlantExtra} from "../interfaces/IEmPlantExtra.sol";
 import {EmPlantInternal} from "../functionality/EmPlantInternal.sol";
 import {Errors} from "../../errors.sol";
-import "hardhat/console.sol";
 
 contract EmPlantExtra is EmPipeContext, EmPlantContext, ProxyImplementation, EmPlantInternal, IEmPlantExtra {
 
