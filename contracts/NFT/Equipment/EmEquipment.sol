@@ -6,6 +6,7 @@ import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet
 import {IEmEquipment} from "./interfaces/IEmEquipment.sol";
 import {EmERC721, IERC165} from "../EmERC721/EmERC721.sol";
 import {ResourceMod, UserMod, EquipmentType, Item, Collection} from "./interfaces/structs.sol";
+import {Errors} from "../../game/errors.sol";
 
 contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
 
@@ -184,13 +185,17 @@ contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
         _mint(user, tokenId);
         _items[tokenId].tokenId = tokenId;
         _items[tokenId].typeId = typeId;
+        uint256 transferable = _types[typeId].transferableAfter;
+        if (transferable > 0) {
+            _items[tokenId].transferableAfter = block.timestamp + transferable;
+        }
         _types[typeId].count++;
         emit Minted(user, typeId, tokenId);
     }
 
     function burn(uint256 tokenId) external onlyRole(MOD_ROLE) {
         if (_items[tokenId].locked) {
-            revert TokenLockedError(_lockers[tokenId]);
+            revert Errors.TokenLockedError(_lockers[tokenId]);
         }
         address user = _requireOwned(tokenId);
         uint256 typeId = _items[tokenId].typeId;
@@ -203,7 +208,7 @@ contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
     function lock(uint256 tokenId) external onlyRole(MOD_ROLE) {
         _requireOwned(tokenId);
         if (_items[tokenId].locked) {
-            revert TokenLockedError(_lockers[tokenId]);
+            revert Errors.TokenLockedError(_lockers[tokenId]);
         } else {
             _lockers[tokenId] = _msgSender();
             _items[tokenId].locked = true;
@@ -254,7 +259,7 @@ contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
     }
 
     function _isTransferable(uint256 tokenId) internal view returns (bool) {
-        uint256 transferableAfter = _types[_tokenTypes[tokenId]].transferableAfter;
+        uint256 transferableAfter = _items[tokenId].transferableAfter;
         if (transferableAfter == 0) {
             return false;
         } else {

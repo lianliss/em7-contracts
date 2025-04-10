@@ -7,6 +7,8 @@ library Errors {
     /// @param techIndex Technology index
     error TechNotResearchedError(uint256 techIndex);
 
+    error TokenLockedError(address locker);
+
     error AreaAlreadyClaimedError(uint256 x, uint256 y);
     error PositionIsOccupiedError(uint256 x, uint256 y, uint8 size);
 

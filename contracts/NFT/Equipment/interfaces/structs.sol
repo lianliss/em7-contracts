@@ -28,6 +28,7 @@ struct EquipmentType {
 struct Item {
     uint256 tokenId;
     uint256 typeId;
+    uint256 transferableAfter;
     bool locked;
 }
 

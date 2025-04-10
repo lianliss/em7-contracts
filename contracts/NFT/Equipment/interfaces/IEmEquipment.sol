@@ -6,8 +6,6 @@ import "./structs.sol";
 
 interface IEmEquipment is IEmERC721 {
 
-    error TokenLockedError(address locker);
-
     event CollectionAdded(uint256 indexed collectionId, string title);
     event CollectionUpdated(uint256 indexed collectionId, string title);
     event TokenLocked(uint256 indexed tokenId, address locker);

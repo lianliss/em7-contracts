@@ -180,7 +180,8 @@ describe("EmPlant Contract", function () {
     await increaseTime(10);
     // Claim the plant
     // await EmMine.connect(user).claim(1);
-    await EmPlant.connect(user).claim(2);
+    const claim = await EmPlant.connect(user).claim(2);
+    // console.log('CLAIM', await claim.wait());
     let balances = await Balances.getBalances(user.address, [oil.resource, diesel.resource]);
     // console.log('BALANCES', balances);
     // plant = await EmPlant.getPlant(user.address, 2);
