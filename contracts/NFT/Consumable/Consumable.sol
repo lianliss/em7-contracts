@@ -99,7 +99,6 @@ contract Consumable is AccessControl, EmERC721, ExternalCall, IConsumable {
             _types[typeId].count--;
             emit Burned(user, typeId, tokenId);
         }
-        
     }
 
 
@@ -158,9 +157,9 @@ contract Consumable is AccessControl, EmERC721, ExternalCall, IConsumable {
             super.supportsInterface(interfaceId);
     }
 
-    function mint(address user, uint256 typeId) external onlyRole(MOD_ROLE) {
+    function mint(address user, uint256 typeId) external onlyRole(MOD_ROLE) returns (uint256 tokenId) {
         _requireTypeExists(typeId);
-        uint256 tokenId = _tokensIndex++;
+        tokenId = _tokensIndex++;
         _mint(user, tokenId);
         _items[tokenId].tokenId = tokenId;
         _items[tokenId].typeId = typeId;

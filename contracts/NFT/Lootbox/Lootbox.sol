@@ -3,12 +3,13 @@ pragma solidity ^0.8.24;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import {IEmEquipment} from "./interfaces/IEmEquipment.sol";
+import {ILootbox} from "./interfaces/ILootbox.sol";
 import {EmERC721, IERC165} from "../EmERC721/EmERC721.sol";
-import {ResourceMod, UserMod, EquipmentType, Item, Collection} from "./interfaces/structs.sol";
+import "./interfaces/structs.sol";
 import {Errors} from "../../game/errors.sol";
+import {PERCENT_PRECISION} from "../../core/const.sol";
 
-contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
+contract Lootbox is AccessControl, EmERC721, ILootbox {
 
     using EnumerableSet for EnumerableSet.UintSet;
 
@@ -16,10 +17,12 @@ contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
     bytes32 public constant MOD_ROLE = keccak256("MOD_ROLE");
 
     uint256 internal _typesLength;
-    mapping(uint256 typeId => EquipmentType) internal _types;
-    mapping(uint256 tokenId => Item) internal _items;
+    mapping(uint256 typeId => LootboxType) internal _types;
+    mapping(uint256 tokenId => LootboxItem) internal _items;
     mapping(uint256 tokenId => address locker) internal _lockers;
     Collection[] internal _collections;
+
+    uint256 private _randomCounter;
 
     constructor() {
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
@@ -42,24 +45,24 @@ contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
         return (data, count);
     }
 
-    function getTypes(uint256 offset, uint256 limit) public view returns (EquipmentType[] memory, uint256 count) {
+    function getTypes(uint256 offset, uint256 limit) public view returns (LootboxType[] memory, uint256 count) {
         count = _typesLength;
-        if (offset >= count || limit == 0) return (new EquipmentType[](0), count);
+        if (offset >= count || limit == 0) return (new LootboxType[](0), count);
         uint256 length = count - offset;
         if (limit < length) length = limit;
-        EquipmentType[] memory data = new EquipmentType[](length);
+        LootboxType[] memory data = new LootboxType[](length);
         for (uint256 i; i < length; i++) {
             data[i] = _types[i];
         }
         return (data, count);
     }
 
-    function getTokens(address user, uint256 offset, uint256 limit) public view returns (Item[] memory, uint256 count) {
+    function getTokens(address user, uint256 offset, uint256 limit) public view returns (LootboxItem[] memory, uint256 count) {
         count = _ownerTokens[user].length();
-        if (offset >= count || limit == 0) return (new Item[](0), count);
+        if (offset >= count || limit == 0) return (new LootboxItem[](0), count);
         uint256 length = count - offset;
         if (limit < length) length = limit;
-        Item[] memory data = new Item[](length);
+        LootboxItem[] memory data = new LootboxItem[](length);
         for (uint256 i; i < length; i++) {
             data[i] = _items[i];
         }
@@ -70,6 +73,25 @@ contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
         _requireOwned(tokenId);
 
         return _types[_tokenTypes[tokenId]].tokenURI;
+    }
+
+
+    /// Write methods
+
+    function open(uint256 tokenId) public {
+        address user = _requireOwned(tokenId);
+        if (user != _msgSender()) {
+            revert ERC721InvalidOwner(user);
+        }
+        uint256 typeId = _tokenTypes[tokenId];
+        (,address nftAddress, uint256 nftTypeId) = _rollDrop(typeId);
+        uint256 nftItemId = ILootbox(nftAddress).mint(user, nftTypeId);
+        emit DropRolled(user, typeId, tokenId, nftAddress, nftTypeId, nftItemId);
+        /// Burn lootbox
+        _burn(tokenId);
+        delete _items[tokenId];
+        _types[typeId].count--;
+        emit Burned(user, typeId, tokenId);
     }
 
 
@@ -91,81 +113,49 @@ contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
     }
 
     function addType(
-        uint256 collectionId,
-        uint256 slotId,
-        uint256 transferableAfter,
-        string calldata imageURI,
-        string calldata name
+        LootboxType calldata newType
     ) public onlyRole(EDITOR_ROLE) {
-        _requireCollectionExists(collectionId);
+        _requireCollectionExists(newType.collectionId);
         uint256 typeId = _typesLength++;
-        _types[typeId].collectionId = collectionId;
-        _types[typeId].slotId = slotId;
-        _types[typeId].transferableAfter = transferableAfter;
-        _types[typeId].tokenURI = imageURI;
-        _types[typeId].name = name;
+        _types[typeId] = newType;
+        _types[typeId].typeId = typeId;
         
         emit TypeAdded(
             typeId,
-            collectionId,
-            slotId,
-            transferableAfter,
-            imageURI,
-            name
+            _types[typeId]
         );
     }
 
     function updateType(
-        uint256 typeId,
-        uint256 collectionId,
-        uint256 slotId,
-        uint256 transferableAfter,
-        string calldata imageURI,
-        string calldata name
+        LootboxType calldata existingType
     ) public onlyRole(EDITOR_ROLE) {
-        _requireTypeExists(typeId);
-        _requireCollectionExists(collectionId);
-        _types[typeId].collectionId = collectionId;
-        _types[typeId].slotId = slotId;
-        _types[typeId].transferableAfter = transferableAfter;
-        _types[typeId].tokenURI = imageURI;
-        _types[typeId].name = name;
+        _requireTypeExists(existingType.typeId);
+        _requireCollectionExists(existingType.collectionId);
+        _types[existingType.typeId] = existingType;
         
         emit TypeUpdated(
-            typeId,
-            collectionId,
-            slotId,
-            transferableAfter,
-            imageURI,
-            name
+            existingType.typeId,
+            existingType
         );
     }
 
-    function setTypeMods(
+    function addDrop(
         uint256 typeId,
-        UserMod[] calldata userMods,
-        ResourceMod[] calldata buildingMods,
-        ResourceMod[] calldata borderingMods
+        Drop[] calldata drop
     ) public onlyRole(EDITOR_ROLE) {
         _requireTypeExists(typeId);
-        delete _types[typeId].userMods;
-        for (uint256 i; i < _types[typeId].userMods.length; i++) {
-            _types[typeId].userMods.push(userMods[i]);
+        for (uint256 i; i < drop.length; i++) {
+            _types[typeId].drop.push(drop[i]);
         }
-        delete _types[typeId].buildingMods;
-        for (uint256 i; i < _types[typeId].buildingMods.length; i++) {
-            _types[typeId].buildingMods.push(buildingMods[i]);
-        }
-        delete _types[typeId].borderingMods;
-        for (uint256 i; i < _types[typeId].borderingMods.length; i++) {
-            _types[typeId].borderingMods.push(borderingMods[i]);
-        }
-        emit TypeModsSet(
-            typeId,
-            userMods,
-            buildingMods,
-            borderingMods
-        );
+        emit DropAdded(typeId, drop);
+    }
+
+    function clearDrop(
+        uint256 typeId
+    ) public onlyRole(EDITOR_ROLE) {
+        _requireTypeExists(typeId);
+        delete _types[typeId].drop;
+        emit DropCleared(typeId);
     }
 
 
@@ -194,57 +184,12 @@ contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
     }
 
     function burn(uint256 tokenId) external onlyRole(MOD_ROLE) {
-        if (_items[tokenId].locked) {
-            revert Errors.TokenLockedError(_lockers[tokenId]);
-        }
         address user = _requireOwned(tokenId);
         uint256 typeId = _items[tokenId].typeId;
         _burn(tokenId);
         delete _items[tokenId];
         _types[typeId].count--;
         emit Burned(user, typeId, tokenId);
-    }
-
-    function lock(uint256 tokenId) external onlyRole(MOD_ROLE) {
-        _requireOwned(tokenId);
-        if (_items[tokenId].locked) {
-            revert Errors.TokenLockedError(_lockers[tokenId]);
-        } else {
-            _lockers[tokenId] = _msgSender();
-            _items[tokenId].locked = true;
-            emit TokenLocked(tokenId, _msgSender());
-        }
-    }
-
-    function unlock(uint256 tokenId) external onlyRole(MOD_ROLE) {
-        _requireOwned(tokenId);
-        if (_items[tokenId].locked) {
-            delete _lockers[tokenId];
-            _items[tokenId].locked = false;
-            emit TokenUnlocked(tokenId, _msgSender());
-        } else {
-            revert("Token unlocked");
-        }
-    }
-
-    function getUserMods(uint256 tokenId) external view returns (UserMod[] memory) {
-        _requireOwned(tokenId);
-        return _types[_tokenTypes[tokenId]].userMods;
-    }
-
-    function getBuildingMods(uint256 tokenId) external view returns (ResourceMod[] memory) {
-        _requireOwned(tokenId);
-        return _types[_tokenTypes[tokenId]].buildingMods;
-    }
-
-    function getBorderingMods(uint256 tokenId) external view returns (ResourceMod[] memory) {
-        _requireOwned(tokenId);
-        return _types[_tokenTypes[tokenId]].borderingMods;
-    }
-
-    function getSlot(uint256 tokenId) external view returns (uint256) {
-        _requireOwned(tokenId);
-        return _types[_tokenTypes[tokenId]].slotId;
     }
 
 
@@ -263,8 +208,7 @@ contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
         if (transferableAfter == 0) {
             return false;
         } else {
-            return block.timestamp > transferableAfter
-            && !_items[tokenId].locked;
+            return block.timestamp > transferableAfter;
         }
     }
 
@@ -273,6 +217,34 @@ contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
             _isTransferable(tokenId)
             && spender != address(0)
             && ((owner == spender) || (_getApproved(tokenId) == spender));
+    }
+
+    function _pseudoRandom(uint256 mod) internal returns (uint256) {
+        return uint256(keccak256(abi.encodePacked(block.prevrandao, block.timestamp, ++_randomCounter)))
+            % mod;
+    }
+
+    function _rollRarity(uint256 typeId) internal returns (uint256) {
+        uint rand = _pseudoRandom(PERCENT_PRECISION);
+        uint chance;
+        if (_types[typeId].drop.length > 1) {
+            for (uint256 rarity = _types[typeId].drop.length - 1; rarity > 0; rarity--) {
+                chance += _types[typeId].drop[rarity].chanceRatio;
+                if (rand <= chance) {
+                    return rarity;
+                }
+            }
+        }
+        return 0;
+    }
+
+    function _rollDrop(uint256 typeId) internal returns (uint256 rarity, address nftAddress, uint256 nftTypeId) {
+        LootboxType storage box = _types[typeId];
+        rarity = _rollRarity(typeId);
+        Drop storage drop = box.drop[rarity];
+        uint256 itemIndex = _pseudoRandom(drop.typeId.length);
+        nftAddress = drop.nftAddress;
+        nftTypeId = drop.typeId[itemIndex];
     }
 
 }

@@ -67,7 +67,7 @@ interface IEmEquipment is IEmERC721 {
         ResourceMod[] calldata borderingMods
     ) external;
 
-    function mint(address user, uint256 typeId) external;
+    function mint(address user, uint256 typeId) external returns (uint256 tokenId);
     function burn(uint256 tokenId) external;
     function lock(uint256 tokenId) external;
     function unlock(uint256 tokenId) external;
