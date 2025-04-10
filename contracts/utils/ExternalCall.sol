@@ -33,8 +33,7 @@ abstract contract ExternalCall {
     /// @notice Call methos in the external contract by the address and method ABI.
     /// @param contractAddress Address of the callable contract.
     /// @param method ABI of method where the first param is a user address
-    /// @param userAddress The user for whom the method is called
-    /// @param extraParams ABI encoded static params
+    /// @param params ABI encoded static params
     /// @return External method result
     /// @dev To avoid incorrect calldata conversion, use only static data
     /// @dev Prohibited params types: string, bytes, dymanic arrays, dynamic tuples
@@ -42,14 +41,12 @@ abstract contract ExternalCall {
     function externalCall(
         address contractAddress,
         string memory method,
-        address userAddress,
-        bytes memory extraParams
+        bytes memory params
     ) internal returns(bytes memory) {
         bytes4 signature = bytes4(keccak256(bytes(method)));
         (bool success, bytes memory data) = contractAddress.call(bytes.concat(
             signature, 
-            abi.encode(userAddress),
-            extraParams
+            params
         ));
         return processCalldata(success, data);
     }

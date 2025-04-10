@@ -15,6 +15,7 @@ struct ConsumableType {
     bytes params;
     uint256 count;
     bool transferable;
+    bool useCoords;
 }
 
 struct ConsumableItem {

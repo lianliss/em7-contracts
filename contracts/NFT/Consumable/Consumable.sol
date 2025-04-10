@@ -75,7 +75,30 @@ contract Consumable is AccessControl, EmERC721, ExternalCall, IConsumable {
 
     /// Write methods
 
-    function use(uint256 tokenId) public {
+    function use(uint256 tokenId, uint256 x, uint256 y) public {
+        address user = _requireOwned(tokenId);
+        if (user != _msgSender()) {
+            revert ERC721InvalidOwner(user);
+        }
+        uint256 typeId = _tokenTypes[tokenId];
+        ConsumableItem storage item = _items[tokenId];
+        ConsumableType storage tokenType = _types[typeId];
+        bytes memory params = tokenType.useCoords
+            ? abi.encode(user, x, y, tokenType.params)
+            : abi.encode(user, tokenType.params);
+        externalCall(
+            tokenType.contractAddress,
+            tokenType.method,
+            params
+        );
+        item.charges--;
+        emit ItemUsed(user, typeId, tokenId, item.charges);
+        if (item.charges == 0) {
+            _burn(tokenId);
+            delete _items[tokenId];
+            _types[typeId].count--;
+            emit Burned(user, typeId, tokenId);
+        }
         
     }
 
