@@ -36,8 +36,12 @@ contract EmSlots is AccessControl, IEmSlots {
         _grantRole(EMERGENCY_ROLE, _msgSender());
 
         _level = IEmLevel(levelAddress);
-        _addParameter("Research", Range.Values(PERCENT_PRECISION / 2, PERCENT_PRECISION));
+        _addParameter("Research cost", Range.Values(PERCENT_PRECISION / 2, PERCENT_PRECISION));
         _addParameter("Demolish return", Range.Values(PERCENT_PRECISION, PERCENT_PRECISION * 2));
+        _addParameter("Claim price", Range.Values(PERCENT_PRECISION / 2, PERCENT_PRECISION));
+        _addParameter("Claim Stars price", Range.Values(PERCENT_PRECISION / 2, PERCENT_PRECISION));
+        _addParameter("Buying resources", Range.Values(PERCENT_PRECISION / 2, PERCENT_PRECISION));
+        _addParameter("Selling resources", Range.Values(PERCENT_PRECISION / 2, PERCENT_PRECISION));
     }
 
     function addSlot(string calldata title, uint256 minLevel, bool independent) public onlyRole(EDITOR_ROLE) {

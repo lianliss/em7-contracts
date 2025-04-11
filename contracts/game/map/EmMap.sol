@@ -6,8 +6,10 @@ import {MemoryQueue} from "../../utils/sequence/MemoryQueue.sol";
 import {EmMapContext, Coords, Object, Progression} from "./context/EmMapContext.sol";
 import {IEmResFactory} from "../../token/EmResource/interfaces/IEmResFactory.sol";
 import {IEmResource} from "../../token/EmResource/interfaces/IEmResource.sol";
+import {IEmSlots} from "../slots/interfaces/IEmSlots.sol";
 import {IEmMap} from "./interfaces/IEmMap.sol";
-import {MONEY_RES_ID} from "../const.sol";
+import {PERCENT_PRECISION} from "../../core/const.sol";
+import {MONEY_RES_ID, CLAIM_PARAM_ID, CLAIM_STARS_PARAM_ID} from "../const.sol";
 import {Errors} from "../errors.sol";
 
 /// @dev Require EmStars SPENDER_ROLE;
@@ -20,8 +22,8 @@ contract EmMap is EmMapContext, IEmMap {
     using Progression for Progression.Params;
     using Coords for Coords.Point;
 
-    constructor(address starsAddress, address resFactoryAddress)
-    EmMapContext(starsAddress, resFactoryAddress) {}
+    constructor(address starsAddress, address resFactoryAddress, address slotsAddress)
+    EmMapContext(starsAddress, resFactoryAddress, slotsAddress) {}
     
 
     /// Read methods
@@ -105,8 +107,8 @@ contract EmMap is EmMapContext, IEmMap {
         address user = _msgSender();
         uint256 price = _price.get(_paidAreas[user]++);
         IEmResource money = _money();
+        price = price * _slots.getMod(user, CLAIM_PARAM_ID) / PERCENT_PRECISION;
         if (price > 0) money.burn(user, price);
-        /// TODO Add discount mod
         _claimArea(user, x, y);
         emit AreaPaid(user, x, y, address(money), price);
     }
@@ -114,6 +116,7 @@ contract EmMap is EmMapContext, IEmMap {
     function claimAreaStars(uint256 x, uint256 y) public {
         address user = _msgSender();
         uint256 price = _price.get(_starsPaidAreas[user]++);
+        price = price * _slots.getMod(user, CLAIM_STARS_PARAM_ID) / PERCENT_PRECISION;
         if (price > 0) _stars.spend(user, price);
         _claimArea(user, x, y);
         emit AreaPaid(user, x, y, address(_stars), price);

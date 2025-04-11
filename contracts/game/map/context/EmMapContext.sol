@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {IEmResFactory} from "../../../token/EmResource/interfaces/IEmResFactory.sol";
 import {IEmStarsExternal} from "../../../token/EmStars/interfaces/IEmStarsExternal.sol";
+import {IEmSlots} from "../../slots/interfaces/IEmSlots.sol";
 import {Proxy} from "../../../Proxy/Proxy.sol";
 import {Coords} from "../../lib/coords.sol";
 import {Object} from "../interfaces/IEmMap.sol";
@@ -17,6 +18,7 @@ abstract contract EmMapContext is Proxy {
 
     IEmStarsExternal internal _stars;
     IEmResFactory internal _res;
+    IEmSlots internal _slots;
 
     Progression.Params internal _price;
     Progression.Params internal _starsPrice;
@@ -31,13 +33,14 @@ abstract contract EmMapContext is Proxy {
     mapping(address user => mapping(uint256 buildingIndex => bytes32 hash)) internal _buildings;
     mapping(address user => mapping(uint256 x => mapping(uint256 y => bytes32 hash))) internal _tiles;
 
-    constructor(address starsAddress, address resFactoryAddress) Proxy() {
+    constructor(address starsAddress, address resFactoryAddress, address slotsAddress) Proxy() {
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _grantRole(EDITOR_ROLE, _msgSender());
         _grantRole(BUILDER_ROLE, _msgSender());
 
         _stars = IEmStarsExternal(starsAddress);
         _res = IEmResFactory(resFactoryAddress);
+        _slots = IEmSlots(slotsAddress);
     }
 
 }
