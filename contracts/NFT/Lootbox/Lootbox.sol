@@ -84,8 +84,9 @@ contract Lootbox is AccessControl, EmERC721, ILootbox {
             revert ERC721InvalidOwner(user);
         }
         uint256 typeId = _tokenTypes[tokenId];
+        uint256 transferableAfter = _items[tokenId].transferableAfter;
         (,address nftAddress, uint256 nftTypeId) = _rollDrop(typeId);
-        uint256 nftItemId = ILootbox(nftAddress).mint(user, nftTypeId);
+        uint256 nftItemId = ILootbox(nftAddress).mint(user, nftTypeId, transferableAfter);
         emit DropRolled(user, typeId, tokenId, nftAddress, nftTypeId, nftItemId);
         /// Burn lootbox
         _burn(tokenId);
@@ -169,18 +170,12 @@ contract Lootbox is AccessControl, EmERC721, ILootbox {
             super.supportsInterface(interfaceId);
     }
 
+    function mint(address user, uint256 typeId, uint256 lockup) external onlyRole(MOD_ROLE) returns (uint256 tokenId) {
+        return _mintLocked(user, typeId, lockup);
+    }
+
     function mint(address user, uint256 typeId) external onlyRole(MOD_ROLE) returns (uint256 tokenId) {
-        _requireTypeExists(typeId);
-        tokenId = _tokensIndex++;
-        _mint(user, tokenId);
-        _items[tokenId].tokenId = tokenId;
-        _items[tokenId].typeId = typeId;
-        uint256 transferable = _types[typeId].transferableAfter;
-        if (transferable > 0) {
-            _items[tokenId].transferableAfter = block.timestamp + transferable;
-        }
-        _types[typeId].count++;
-        emit Minted(user, typeId, tokenId);
+        return _mintLocked(user, typeId, 1);
     }
 
     function burn(uint256 tokenId) external onlyRole(MOD_ROLE) {
@@ -195,6 +190,22 @@ contract Lootbox is AccessControl, EmERC721, ILootbox {
 
     /// Internal methods
 
+    function _mintLocked(address user, uint256 typeId, uint256 lockup) internal returns (uint256 tokenId) {
+        _requireTypeExists(typeId);
+        tokenId = _tokensIndex++;
+        _mint(user, tokenId);
+        _items[tokenId].tokenId = tokenId;
+        _items[tokenId].typeId = typeId;
+        uint256 transferable = _types[typeId].transferableAfter;
+        if (lockup > transferable) {
+            transferable = lockup;
+        }
+        if (transferable > 0) {
+            _items[tokenId].transferableAfter = block.timestamp + transferable;
+        }
+        _types[typeId].count++;
+        emit Minted(user, typeId, tokenId);
+    }
     function _requireTypeExists(uint256 typeId) internal view {
         require(typeId < _typesLength, "Type is not exists");
     }

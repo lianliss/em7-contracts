@@ -21,6 +21,7 @@ interface ILootbox is IEmERC721 {
     event Burned(address indexed user, uint256 indexed typeId, uint256 tokenId);
 
     function mint(address user, uint256 typeId) external returns (uint256 tokenId);
+    function mint(address user, uint256 typeId, uint256 lockup) external returns (uint256 tokenId);
     function burn(uint256 tokenId) external;
     function open(uint256 tokenId) external;
 
