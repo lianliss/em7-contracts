@@ -22,4 +22,5 @@ struct ConsumableItem {
     uint256 tokenId;
     uint256 typeId;
     uint256 charges;
+    uint256 transferableAfter;
 }

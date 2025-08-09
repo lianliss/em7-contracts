@@ -157,15 +157,12 @@ contract Consumable is AccessControl, EmERC721, ExternalCall, IConsumable {
             super.supportsInterface(interfaceId);
     }
 
+    function mint(address user, uint256 typeId, uint256 lockup) external onlyRole(MOD_ROLE) returns (uint256 tokenId) {
+        return _mintLocked(user, typeId, lockup);
+    }
+
     function mint(address user, uint256 typeId) external onlyRole(MOD_ROLE) returns (uint256 tokenId) {
-        _requireTypeExists(typeId);
-        tokenId = _tokensIndex++;
-        _mint(user, tokenId);
-        _items[tokenId].tokenId = tokenId;
-        _items[tokenId].typeId = typeId;
-        _items[tokenId].charges = _types[typeId].charges;
-        _types[typeId].count++;
-        emit Minted(user, typeId, tokenId);
+        return _mintLocked(user, typeId, 1);
     }
 
     function burn(uint256 tokenId) external onlyRole(MOD_ROLE) {
@@ -180,6 +177,18 @@ contract Consumable is AccessControl, EmERC721, ExternalCall, IConsumable {
 
     /// Internal methods
 
+    function _mintLocked(address user, uint256 typeId, uint256 lockup) internal returns (uint256 tokenId) {
+        _requireTypeExists(typeId);
+        tokenId = _tokensIndex++;
+        _mint(user, tokenId);
+        _items[tokenId].tokenId = tokenId;
+        _items[tokenId].typeId = typeId;
+        _items[tokenId].charges = _types[typeId].charges;
+        _items[tokenId].transferableAfter = lockup;
+        _types[typeId].count++;
+        emit Minted(user, typeId, tokenId);
+    }
+
     function _requireTypeExists(uint256 typeId) internal view {
         require(typeId < _typesLength, "Type is not exists");
     }
@@ -189,7 +198,16 @@ contract Consumable is AccessControl, EmERC721, ExternalCall, IConsumable {
     }
     
     function _isTransferable(uint256 tokenId) internal view returns (bool) {
-        return _types[_items[tokenId].typeId].transferable;
+        uint256 transferableAfter = _items[tokenId].transferableAfter;
+        if (_types[_items[tokenId].typeId].transferable) {
+            if (transferableAfter == 0) {
+                return false;
+            } else {
+                return block.timestamp > transferableAfter;
+            }
+        } else {
+            return false;
+        }
     }
 
     function _isAuthorized(address owner, address spender, uint256 tokenId) internal view override  returns (bool) {
