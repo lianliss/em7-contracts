@@ -10,6 +10,7 @@ interface IEmStarsExternal {
     /// External spenders method
     function spend(address holder, uint256 amount) external;
     function spendUnlocked(address holder, uint256 amount) external;
+    function earliestUnlockTime(address holder, uint256 requiredAmount) external view returns (uint256 unlockTimestamp);
 
     /// Backend minter methods
     function mintLockup(address holder, uint256 amount) external;

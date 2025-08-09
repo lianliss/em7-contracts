@@ -107,6 +107,41 @@ contract EmStars is ERC20, AccessControl, IEmStars, IEmStarsERC20Extention {
         }
     }
 
+    /// @notice Returns the earliest timestamp when the holder will have at least `requiredAmount` tokens available.
+    /// @param holder The address of the token holder
+    /// @param requiredAmount The amount we want to have available
+    /// @return unlockTimestamp If already available now — returns the current block timestamp; otherwise — the date of the next unlock
+    function earliestUnlockTime(address holder, uint256 requiredAmount) external view returns (uint256 unlockTimestamp) {
+        /// Check how much is already available right now
+        uint256 available = balanceOf(holder);
+        if (available >= requiredAmount) {
+            return block.timestamp;
+        }
+
+        /// Calculate how much more is needed
+        uint256 needed = requiredAmount - available;
+
+        /// Iterate through future lockups in ascending order of date
+        uint256 cumulative = 0;
+        uint256 length = _lockupDate[holder].length();
+        for (uint256 i = 0; i < length; i++) {
+            uint256 date = _lockupDate[holder].at(i);
+            /// Skip lockups that are already unlocked
+            if (date <= block.timestamp) {
+                continue;
+            }
+            cumulative += _lockupValue[holder][date];
+            /// Once we've accumulated enough to cover 'needed', return that date
+            if (cumulative >= needed) {
+                return date;
+            }
+        }
+
+        /// If even with all future lockups we can't reach the required amount, revert
+        revert ERC20InsufficientBalance(holder, _getLockupsBalance(holder), requiredAmount);
+    }
+
+
     /// Modified default ERC20 methods
 
     /// @notice Returns holder balance of unlocked funds;
