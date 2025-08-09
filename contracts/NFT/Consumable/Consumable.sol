@@ -184,9 +184,11 @@ contract Consumable is AccessControl, EmERC721, ExternalCall, IConsumable {
         _items[tokenId].tokenId = tokenId;
         _items[tokenId].typeId = typeId;
         _items[tokenId].charges = _types[typeId].charges;
-        _items[tokenId].transferableAfter = lockup;
+        _items[tokenId].transferableAfter = lockup > 0
+            ? block.timestamp + lockup
+            : 0;
         _types[typeId].count++;
-        emit Minted(user, typeId, tokenId);
+        emit Minted(user, typeId, tokenId, _items[tokenId].transferableAfter);
     }
 
     function _requireTypeExists(uint256 typeId) internal view {

@@ -9,7 +9,7 @@ interface IConsumable is IEmERC721 {
     event CollectionAdded(uint256 indexed collectionId, string title);
     event CollectionUpdated(uint256 indexed collectionId, string title);
 
-    event Minted(address indexed user, uint256 indexed typeId, uint256 indexed tokenId);
+    event Minted(address indexed user, uint256 indexed typeId, uint256 indexed tokenId, uint256 transferableAfter);
     event Burned(address indexed user, uint256 indexed typeId, uint256 indexed tokenId);
 
     event TypeAdded(uint256 indexed typeId, ConsumableType newType);

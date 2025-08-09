@@ -36,7 +36,7 @@ interface IEmEquipment is IEmERC721 {
         ResourceMod[] borderingMods
     );
 
-    event Minted(address indexed user, uint256 indexed typeId, uint256 tokenId);
+    event Minted(address indexed user, uint256 indexed typeId, uint256 tokenId, uint256 transferableAfter);
     event Burned(address indexed user, uint256 indexed typeId, uint256 tokenId);
 
     function getCollections(uint256 offset, uint256 limit) external view returns (Collection[] memory, uint256 count);

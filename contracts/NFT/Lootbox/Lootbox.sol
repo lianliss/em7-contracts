@@ -204,7 +204,7 @@ contract Lootbox is AccessControl, EmERC721, ILootbox {
             _items[tokenId].transferableAfter = block.timestamp + transferable;
         }
         _types[typeId].count++;
-        emit Minted(user, typeId, tokenId);
+        emit Minted(user, typeId, tokenId, _items[tokenId].transferableAfter);
     }
     function _requireTypeExists(uint256 typeId) internal view {
         require(typeId < _typesLength, "Type is not exists");

@@ -258,7 +258,7 @@ contract EmEquipment is AccessControl, EmERC721, IEmEquipment {
             _items[tokenId].transferableAfter = block.timestamp + transferable;
         }
         _types[typeId].count++;
-        emit Minted(user, typeId, tokenId);
+        emit Minted(user, typeId, tokenId, _items[tokenId].transferableAfter);
     }
 
     function _requireTypeExists(uint256 typeId) internal view {
