@@ -36,9 +36,6 @@ interface IEmEquipment is IEmERC721 {
         ResourceMod[] borderingMods
     );
 
-    event Minted(address indexed user, uint256 indexed typeId, uint256 tokenId, uint256 transferableAfter);
-    event Burned(address indexed user, uint256 indexed typeId, uint256 tokenId);
-
     function getCollections(uint256 offset, uint256 limit) external view returns (Collection[] memory, uint256 count);
     function getTypes(uint256 offset, uint256 limit) external view returns (EquipmentType[] memory, uint256 count);
     function getTokens(address user, uint256 offset, uint256 limit) external view returns (Item[] memory, uint256 count);
@@ -67,9 +64,6 @@ interface IEmEquipment is IEmERC721 {
         ResourceMod[] calldata borderingMods
     ) external;
 
-    function mint(address user, uint256 typeId) external returns (uint256 tokenId);
-    function mint(address user, uint256 typeId, uint256 lockup) external returns (uint256 tokenId);
-    function burn(uint256 tokenId) external;
     function lock(uint256 tokenId) external;
     function unlock(uint256 tokenId) external;
     function getUserMods(uint256 tokenId) external view returns (UserMod[] memory);

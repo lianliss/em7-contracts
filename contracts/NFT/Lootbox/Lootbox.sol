@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {ILootbox} from "./interfaces/ILootbox.sol";
-import {EmERC721, IERC165} from "../EmERC721/EmERC721.sol";
+import {EmERC721, IERC165, IEmERC721} from "../EmERC721/EmERC721.sol";
 import "./interfaces/structs.sol";
 import {Errors} from "../../game/errors.sol";
 import {PERCENT_PRECISION} from "../../core/const.sol";
@@ -86,7 +86,7 @@ contract Lootbox is AccessControl, EmERC721, ILootbox {
         uint256 typeId = _tokenTypes[tokenId];
         uint256 transferableAfter = _items[tokenId].transferableAfter;
         (,address nftAddress, uint256 nftTypeId) = _rollDrop(typeId);
-        uint256 nftItemId = ILootbox(nftAddress).mint(user, nftTypeId, transferableAfter);
+        uint256 nftItemId = IEmERC721(nftAddress).mint(user, nftTypeId, transferableAfter);
         emit DropRolled(user, typeId, tokenId, nftAddress, nftTypeId, nftItemId);
         /// Burn lootbox
         _burn(tokenId);

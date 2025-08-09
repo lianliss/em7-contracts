@@ -9,16 +9,9 @@ interface IConsumable is IEmERC721 {
     event CollectionAdded(uint256 indexed collectionId, string title);
     event CollectionUpdated(uint256 indexed collectionId, string title);
 
-    event Minted(address indexed user, uint256 indexed typeId, uint256 indexed tokenId, uint256 transferableAfter);
-    event Burned(address indexed user, uint256 indexed typeId, uint256 indexed tokenId);
-
     event TypeAdded(uint256 indexed typeId, ConsumableType newType);
     event TypeUpdated(uint256 indexed typeId, ConsumableType existingType);
 
     event ItemUsed(address indexed user, uint256 indexed typeId, uint256 indexed tokenId, uint256 chargesLeft);
-
-    function mint(address user, uint256 typeId) external returns (uint256 tokenId);
-    function mint(address user, uint256 typeId, uint256 lockup) external returns (uint256 tokenId);
-    function burn(uint256 tokenId) external;
 
 }
