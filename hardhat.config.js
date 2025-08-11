@@ -3,8 +3,14 @@ require("@nomiclabs/hardhat-etherscan");
 require('hardhat-ignore-warnings');
 require("hardhat-contract-sizer");
 
-const accounts = require('../accounts');
-const account = accounts.emSeven;
+// accounts configuration is optional; fall back to defaults if not provided
+let accounts = {};
+try {
+  accounts = require('../accounts');
+} catch (err) {
+  // Ignore missing accounts configuration when running locally
+}
+const account = accounts.emSeven || {};
 
 const networks = {
   localhost: {
@@ -14,7 +20,7 @@ const networks = {
     url: "https://testnet.skalenodes.com/v1/lanky-ill-funny-testnet",
     chainId: 37084624,
     gasPrice: 10000000000,
-    accounts: [account.privateKey]
+    accounts: account.privateKey ? [account.privateKey] : undefined
   },
 };
 
@@ -33,7 +39,7 @@ module.exports = {
   networks: networks,
   etherscan: {
     enabled: true,
-    apiKey: accounts.arbitrum,
+    apiKey: accounts.arbitrum || "",
     customChains: [
       {
         network: "skaletest",
